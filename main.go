@@ -17,11 +17,16 @@ func peerName(id string) string {
 	}
 	localIP, err := network.LocalIP()
 	if err != nil {
-		log.Error(err)
+		log.Warning("Not connected to the internet.")
 		localIP = "DISCONNECTED"
 	}
 	return fmt.Sprintf("%s@%s", id, localIP)
 }
+
+const (
+	on  = true
+	off = false
+)
 
 func main() {
 	initLogger()
@@ -46,10 +51,10 @@ func main() {
 	go hw.Init(true)
 
 	time.Sleep(1 * time.Second)
-	hw.SetBtnLED(hw.Btn{Floor: 0, Type: hw.HallUp}, true) //TODO: Change active to a string that take "ON" or "OFF"
-	hw.SetDoorLED(false)                                  //
+	hw.SetBtnLED(hw.Btn{Floor: 0, Type: hw.HallUp}, on)
+	hw.SetDoorLED(off)
 	time.Sleep(2 * time.Second)
-	hw.SetDoorLED(true) //
+	hw.SetDoorLED(on)
 
 	for {
 		select {
