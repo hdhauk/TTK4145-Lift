@@ -9,7 +9,7 @@ import (
 	"github.com/op/go-logging"
 )
 
-var log = logging.MustGetLogger("example")
+var logger = logging.MustGetLogger("example")
 
 func initLogger() {
 	stdBackend := logging.NewLogBackend(os.Stderr, "", 0)
@@ -22,7 +22,7 @@ func initLogger() {
 }
 
 func logPeerUpdate(p network.PeerUpdate) {
-	log.Notice("Peer update:\n")
+	logger.Notice("Peer update:\n")
 	//fmt.Printf("\tPeers:\t%q\n", p.Peers)
 	printPeerArr(p.Peers)
 	fmt.Printf("\tNew:\t%q\n", p.New)

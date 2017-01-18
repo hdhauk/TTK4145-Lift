@@ -1,9 +1,14 @@
 package hw
 
-import "fmt"
+import (
+	"fmt"
+
+	logging "github.com/op/go-logging"
+)
 
 var simMode = false
 var initalized = false
+var logger *logging.Logger
 
 // BtnType ..
 type BtnType int
@@ -24,11 +29,12 @@ type Btn struct {
 }
 
 // Init intializes an elevator or simulated elevator.
-func Init(isSim bool) {
-	if isSim {
+func Init(simPort string, loggerCallBack *logging.Logger) {
+	logger = loggerCallBack
+	if simPort != "" {
 		simMode = true
 		initalized = true
-		initSim()
+		initSim(simPort)
 		return
 	}
 	// C.elev_init(C.ET_Comedi)
