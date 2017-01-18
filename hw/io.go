@@ -1,8 +1,10 @@
-package driver
+package hw
 
+/*
 // #include "c-files/io.h"
 // #cgo CFLAGS: -std=c99
 // #cgo LDFLAGS: -L. -lcomedi -lm
+*/
 import "C"
 import (
 	"fmt"
@@ -23,33 +25,14 @@ func (e HardwareError) Error() string {
 }
 
 func ioInit() error {
-	status := C.io_init()
-	if status == 0 {
-		err := HardwareError(
-			"Unable to initialize hardware",
-			time.Now(),
-		)
-		fmt.Println(err.Error())
-		return err
-	}
+	// status := C.io_init()
+	// if status == 0 {
+	// 	err := HardwareError(
+	// 		"Unable to initialize hardware",
+	// 		time.Now(),
+	// 	)
+	// 	fmt.Println(err.Error())
+	// 	return err
+	// }
 	return nil
-}
-
-func ioSetBit(int channel) {
-	// TODO
-}
-
-func ioClearBit(int channel) {
-	// TODO
-}
-
-func ioReadBit(int channel) {
-	// TODO
-}
-
-func ioReadAnalog(int channel) {
-	// TODO
-}
-func ioWriteAnalog(int channel, int value) {
-	// TODO
 }

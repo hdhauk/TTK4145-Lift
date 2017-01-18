@@ -29,3 +29,5 @@ _testmain.go
 # External packages folder
 vendor/
 /.project
+
+ttk4145-elevator

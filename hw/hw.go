@@ -41,7 +41,7 @@ func isInitialized() bool {
 // SetMotorDir either stops the motor or sets it in motion in either direction.
 func SetMotorDir(dir string) {
 	if !isInitialized() {
-		fmt.Println("Hw not initialized!")
+		fmt.Println("Driver not initialized!")
 	}
 	switch simMode {
 	case true:
