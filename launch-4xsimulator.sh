@@ -19,7 +19,7 @@ echo "..simulators.."
 sleep 1
 echo ".. to boot!"
 
-gnome-terminal -e './ttk4145-elevator -sim 53566 -id sim53566' --geometry 90x10+680+100
-gnome-terminal -e './ttk4145-elevator -sim 53567 -id sim53567' --geometry 90x10+680+320
-gnome-terminal -e './ttk4145-elevator -sim 53568 -id sim53568' --geometry 90x10+680+540
-gnome-terminal -e './ttk4145-elevator -sim 53569 -id sim53569' --geometry 90x10+680+760
+gnome-terminal -e './ttk4145-elevator -sim 53566 -nick sim53566' --geometry 90x10+680+100
+gnome-terminal -e './ttk4145-elevator -sim 53567 -nick sim53567' --geometry 90x10+680+320
+gnome-terminal -e './ttk4145-elevator -sim 53568 -nick sim53568' --geometry 90x10+680+540
+gnome-terminal -e './ttk4145-elevator -sim 53569 -nick sim53569' --geometry 90x10+680+760

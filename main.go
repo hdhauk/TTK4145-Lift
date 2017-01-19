@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"time"
 
 	"bitbucket.org/halvor_haukvik/ttk4145-elevator/hw"
 	"bitbucket.org/halvor_haukvik/ttk4145-elevator/network"
@@ -15,26 +16,47 @@ const (
 	off = false
 )
 
+type order struct {
+	OrderID string // UUID
+	SrcID   string
+	Dir     string
+	Floor   int
+}
+
 func main() {
 	initLogger()
 	// Handle application command-line flags
-	var id string
+	var nick string
 	var simPort string
-	flag.StringVar(&id, "id", "", "id of this peer")
+	flag.StringVar(&nick, "nick", "", "nick name name of this peer")
 	flag.StringVar(&simPort, "sim", "", "listening port of the simulator")
 	flag.Parse()
 	if simPort != "" {
 		logger.Notice("Starting in simulator mode.")
 	}
-	id = peerName(id)
+	var ownID = struct {
+		ID   string
+		Nick string
+	}{
+		ID: makeUUID(), Nick: peerName(nick),
+	}
 
 	// Setting up communication channels
 	peerUpdateCh := make(chan network.PeerUpdate)
 	peerTxEnable := make(chan bool)
+	rxOrderCh := make(chan order)
+	txOrderCh := make(chan order)
 
 	// Setting up running routines
-	go network.HeartBeatBeacon(33324, id, peerTxEnable)
+	go network.HeartBeatBeacon(33324, ownID.Nick, peerTxEnable)
 	go network.PeerMonitor(33324, peerUpdateCh)
+	go network.BcastReceiver(36969, rxOrderCh)
+	go network.BcastTransmitter(36969, txOrderCh)
+	go func(id string) {
+		time.Sleep(3 * time.Second)
+		fmt.Println("sending order")
+		txOrderCh <- order{OrderID: makeUUID(), SrcID: id, Dir: "UP", Floor: 3}
+	}(ownID.ID)
 
 	go hw.Init(simPort, logger)
 
@@ -42,6 +64,8 @@ func main() {
 		select {
 		case p := <-peerUpdateCh:
 			logPeerUpdate(p)
+		case o := <-rxOrderCh:
+			fmt.Println(o)
 
 		}
 	}
