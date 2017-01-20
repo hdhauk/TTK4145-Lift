@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"bitbucket.org/halvor_haukvik/ttk4145-elevator/hw"
+	"bitbucket.org/halvor_haukvik/ttk4145-elevator/msg"
 	"bitbucket.org/halvor_haukvik/ttk4145-elevator/network"
 )
 
@@ -15,13 +16,6 @@ const (
 	on  = true
 	off = false
 )
-
-type order struct {
-	OrderID string // UUID
-	SrcID   string
-	Dir     string
-	Floor   int
-}
 
 func main() {
 	initLogger()
@@ -44,8 +38,8 @@ func main() {
 	// Setting up communication channels
 	peerUpdateCh := make(chan network.PeerUpdate)
 	peerTxEnable := make(chan bool)
-	rxOrderCh := make(chan order)
-	txOrderCh := make(chan order)
+	rxOrderCh := make(chan msg.Order)
+	txOrderCh := make(chan msg.Order)
 
 	// Setting up running routines
 	go network.HeartBeatBeacon(33324, ownID.Nick, peerTxEnable)
@@ -55,7 +49,7 @@ func main() {
 	go func(id string) {
 		time.Sleep(3 * time.Second)
 		fmt.Println("sending order")
-		txOrderCh <- order{OrderID: makeUUID(), SrcID: id, Dir: "UP", Floor: 3}
+		txOrderCh <- msg.Order{OrderID: makeUUID(), SrcID: id, Dir: "UP", Floor: 3}
 	}(ownID.ID)
 
 	go hw.Init(simPort, logger)
