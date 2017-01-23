@@ -13,6 +13,8 @@ do
   Send elevator 1 upward                                   (2)
   Hold HallUp 1st floor for 2 sec in elevator 1            (3)
   Rebuild and restart controllers                          (4)
+  Emulate packet loss on network adapter                   (5)
+  Remove emulated packet loss                              (6)
   Quit                                                     (Q)
 --------------------------------------------------------------
 Choose and option:
@@ -96,6 +98,17 @@ EOF
         CTRL4=$(xdotool search --name controller53569)
         # Return to main
         xdotool windowactivate --sync $MAIN
+        ;;
+    "5")
+        echo "Enter name of network adapter: "
+        read adapter
+        echo "Select percentage of packets to drop: "
+        read percentage
+        sudo tc qdisc add dev $adapter root netem loss $percentage% && echo "Packet loss set to $percentage %"
+        ;;
+    "6")
+        sudo tc qdisc del dev $adapter root netem loss $percentage%
+        echo "Emulated packet loss reset"
         ;;
     "Q")
         sleep .2

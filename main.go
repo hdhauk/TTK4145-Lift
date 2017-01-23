@@ -38,8 +38,8 @@ func main() {
 	// Setting up communication channels
 	peerUpdateCh := make(chan network.PeerUpdate)
 	peerTxEnable := make(chan bool)
-	rxOrderCh := make(chan msg.Order)
-	txOrderCh := make(chan msg.Order)
+	rxOrderCh := make(chan msg.ExtOrder)
+	txOrderCh := make(chan msg.ExtOrder)
 
 	// Setting up running routines
 	go network.HeartBeatBeacon(33324, ownID.Nick, peerTxEnable)
@@ -49,7 +49,7 @@ func main() {
 	go func(id string) {
 		time.Sleep(3 * time.Second)
 		fmt.Println("sending order")
-		txOrderCh <- msg.Order{OrderID: makeUUID(), SrcID: id, Dir: "UP", Floor: 3}
+		txOrderCh <- msg.ExtOrder{OrderID: makeUUID(), SrcID: id, Dir: "UP", Floor: 3}
 	}(ownID.ID)
 
 	go hw.Init(simPort, logger)
