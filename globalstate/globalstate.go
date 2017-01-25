@@ -1,15 +1,19 @@
-// Package globalstate is wrapper package for CoreOS' implementation of the
-// Raft consensus protocol. See https://github.com/hashicorp/raft
-// For a description of how the Raft algorithm works see:
-//  - http://thesecretlivesofdata.com/raft/
-//  - https://raft.github.io/
-//  - https://raft.github.io/raft.pdf
-// TL;DR:
-//  Raft provide an algorithm for ensuring consensus in the cluser, which we in
-//  this project use for keeping track of:
-//    - Last registered floor for all elevators
-//    - Whether an elevator is at a standstill or moving somewhere
-//    - What buttons are pressed in each floor.
+/*
+Package globalstate is wrapper package for CoreOS' implementation of the
+Raft consensus protocol. See https://github.com/hashicorp/raft
+For a description of how the Raft algorithm works see:
+ - http://thesecretlivesofdata.com/raft/
+ - https://raft.github.io/
+ - https://raft.github.io/raft.pdf
+
+TL;DR:
+
+	Raft provide an algorithm for ensuring consensus in the cluser, which we in
+	this project use for keeping track of:
+	* Last registered floor for all elevators
+	* Whether an elevator is at a standstill or moving somewhere
+	* What buttons are pressed in each floor.
+*/
 package globalstate
 
 import "time"
@@ -21,10 +25,10 @@ func Init(nodes int) {
 
 }
 
-// CommitToState emits the given Update to the current cluster leader. It will
+// Add emits the given Update to the current cluster leader. It will
 // return an error of the leader is unreachable, or if it fail to recieve an
 //acknowledgement that the Update is committed to the cluster.
-func CommitToState(u Update) error {
+func Add(u Update) error {
 	return nil
 }
 
