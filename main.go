@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"time"
 
 	"bitbucket.org/halvor_haukvik/ttk4145-elevator/driver"
 	"bitbucket.org/halvor_haukvik/ttk4145-elevator/peerdiscovery"
@@ -34,19 +35,22 @@ func main() {
 	}
 
 	// Setting up communication channels
-	peerUpdateCh := make(chan peerdiscovery.PeerUpdate)
+	// peerUpdateCh := make(chan peerdiscovery.PeerUpdate)
 	//peerTxEnable := make(chan bool)
 
 	// Setting up running routines
 	//go peerdiscovery.HeartBeatBeacon(33324, ownID.Nick, peerTxEnable)
-	go peerdiscovery.Start(33324, ownID.Nick, peerUpdateCh)
+	go peerdiscovery.Start(33324, ownID.Nick, func(id, IP string) {
+		fmt.Printf("ID = %v\n", id)
+		fmt.Printf("IP = %v\n", IP)
+	})
 
 	go driver.Init(simPort, logger)
 
 	for {
 		select {
-		case p := <-peerUpdateCh:
-			logPeerUpdate(p)
+		case <-time.After(1 * time.Second):
+			//logPeerUpdate(p)
 
 		}
 	}
@@ -56,7 +60,7 @@ func peerName(id string) string {
 	if id == "" {
 		id = strconv.Itoa(os.Getpid())
 	}
-	localIP, err := peerdiscovery.LocalIP()
+	localIP, err := peerdiscovery.GetLocalIP()
 	if err != nil {
 		logger.Warning("Not connected to the internet.")
 		localIP = "DISCONNECTED"

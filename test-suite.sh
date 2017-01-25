@@ -23,7 +23,7 @@ EOF
     case "$REPLY" in
     "1")
         echo "Launching 4 simulators"
-        cd hw/simulators/simulator1-53566
+        cd driver/simulators/simulator1-53566
         gnome-terminal -e "rdmd sim_server.d" --geometry 50x10+200+100 --title="sim53566"
         cd ../simulator2-53567
         gnome-terminal -e "rdmd sim_server.d" --geometry 50x10+200+320 --title="sim53567"

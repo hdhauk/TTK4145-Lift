@@ -2,7 +2,6 @@ package peerdiscovery
 
 import (
 	"fmt"
-	"log"
 	"net"
 	"strings"
 	"time"
@@ -32,17 +31,14 @@ const timeout = 50 * time.Millisecond
 // a value on the transmitEnable channel.
 func broadcastHeartBeats(port int, id string) {
 
-	conn := DialBroadcastUDP(port)
+	conn := dialBroadcastUDP(port)
 	addr, _ := net.ResolveUDPAddr("udp4", fmt.Sprintf("255.255.255.255:%d", port))
 
-	enable := true
 	for {
 		select {
 		case <-time.After(interval):
 		}
-		if enable {
-			conn.WriteTo([]byte(id), addr)
-		}
+		conn.WriteTo([]byte(id), addr)
 	}
 }
 
@@ -53,16 +49,18 @@ func broadcastHeartBeats(port int, id string) {
 func Start(port int, ownID string, onNewPeer func(id, IP string)) {
 	var buf [1024]byte
 	peers := make(map[string]*peer)
-	conn := DialBroadcastUDP(port)
+	conn := dialBroadcastUDP(port)
 
-	//go broadcastHeartBeats(port, id, transmitEnable)
+	go broadcastHeartBeats(port, ownID)
 
 	for {
 		conn.SetReadDeadline(time.Now().Add(interval))
-		n, _, err := conn.ReadFrom(buf[0:])
-		if err != nil {
-			log.Println(err)
-		}
+
+		// Although it is considered BAD go-code to throw away the error as we do
+		// here the ReadFrom function will constantly yield non-nil error value
+		// whenever nothing is read. Therefore we insted check to see if the string
+		// n is empty further down.
+		n, _, _ := conn.ReadFrom(buf[0:])
 
 		id := string(buf[:n]) // Either "" or on the form: "peerName@xxx.xxx.xxx.xxx"
 
