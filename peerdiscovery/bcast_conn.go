@@ -1,6 +1,6 @@
 // +build !windows
 
-package network
+package peerdiscovery
 
 import (
 	"net"
