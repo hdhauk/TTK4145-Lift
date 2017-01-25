@@ -2,8 +2,9 @@ package peerdiscovery
 
 import (
 	"fmt"
+	"log"
 	"net"
-	"sort"
+	"strings"
 	"time"
 )
 
@@ -27,9 +28,9 @@ type peer struct {
 const interval = 15 * time.Millisecond
 const timeout = 50 * time.Millisecond
 
-// HeartBeatBeacon broadcast the supplied id every 15ms or whenever recieving
+// broadcastHeartBeats broadcast the supplied id every 15ms or whenever recieving
 // a value on the transmitEnable channel.
-func HeartBeatBeacon(port int, id string, transmitEnable <-chan bool) {
+func broadcastHeartBeats(port int, id string) {
 
 	conn := DialBroadcastUDP(port)
 	addr, _ := net.ResolveUDPAddr("udp4", fmt.Sprintf("255.255.255.255:%d", port))
@@ -37,7 +38,6 @@ func HeartBeatBeacon(port int, id string, transmitEnable <-chan bool) {
 	enable := true
 	for {
 		select {
-		case enable = <-transmitEnable:
 		case <-time.After(interval):
 		}
 		if enable {
@@ -47,54 +47,64 @@ func HeartBeatBeacon(port int, id string, transmitEnable <-chan bool) {
 }
 
 // Start initiate listening for other peers while also start broadcasting
-// to others
-func Start(port int, onNewPeer func(IP string), onLostPeer func(IP string)) {
+// to others. The `id`-field in the callbacks have the form:
+//	peerName@xxx.xxx.xxx.xxx
+// where the latter part is the IPv4 adress of the peer.
+func Start(port int, ownID string, onNewPeer func(id, IP string)) {
 	var buf [1024]byte
-	//var p PeerUpdate
-	//lastSeen := make(map[string]time.Time)
-	peers := make(map[string]peer)
+	peers := make(map[string]*peer)
 	conn := DialBroadcastUDP(port)
 
+	//go broadcastHeartBeats(port, id, transmitEnable)
+
 	for {
-		updated := false
-
 		conn.SetReadDeadline(time.Now().Add(interval))
-		n, _, _ := conn.ReadFrom(buf[0:])
+		n, _, err := conn.ReadFrom(buf[0:])
+		if err != nil {
+			log.Println(err)
+		}
 
-		id := string(buf[:n])
+		id := string(buf[:n]) // Either "" or on the form: "peerName@xxx.xxx.xxx.xxx"
+
+		// TODO: Stop function from triggering on own heartbeats
 
 		// Adding new connection
 		if id != "" {
 			if _, idExists := peers[id]; !idExists {
 				// Previusly unknown host
-				peers[id] = peer{ip:}
-				updated = true
+				s := strings.Split(id, "@")
+				peers[id] = &peer{
+					ip:        s[1],
+					name:      s[0],
+					firstSeen: time.Now(),
+					lastSeen:  time.Now(),
+				}
+				onNewPeer(s[0], s[1])
 			}
-
-			lastSeen[id] = time.Now()
+			peers[id].lastSeen = time.Now()
 		}
 
 		// Removing dead connection
-		p.Lost = make([]string, 0)
-		for k, v := range lastSeen {
-			if time.Now().Sub(v) > timeout {
-				updated = true
-				p.Lost = append(p.Lost, k)
-				delete(lastSeen, k)
-			}
-		}
+		// p.Lost = make([]string, 0)
+		// for k, v := range lastSeen {
+		// 	if time.Now().Sub(v) > timeout {
+		// 		updated = true
+		// 		p.Lost = append(p.Lost, k)
+		// 		delete(lastSeen, k)
+		// 	}
+		// }
 
 		// Sending update
-		if updated {
-			p.Peers = make([]string, 0, len(lastSeen))
-
-			for k := range lastSeen {
-				p.Peers = append(p.Peers, k)
-			}
-
-			sort.Strings(p.Peers)
-			sort.Strings(p.Lost)
-			peerUpdateCh <- p
-		}
+		// if updated {
+		// 	p.Peers = make([]string, 0, len(lastSeen))
+		//
+		// 	for k := range lastSeen {
+		// 		p.Peers = append(p.Peers, k)
+		// 	}
+		//
+		// 	sort.Strings(p.Peers)
+		// 	sort.Strings(p.Lost)
+		// 	peerUpdateCh <- p
+		// }
 	}
 }

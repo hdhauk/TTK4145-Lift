@@ -35,11 +35,11 @@ func main() {
 
 	// Setting up communication channels
 	peerUpdateCh := make(chan peerdiscovery.PeerUpdate)
-	peerTxEnable := make(chan bool)
+	//peerTxEnable := make(chan bool)
 
 	// Setting up running routines
-	go peerdiscovery.HeartBeatBeacon(33324, ownID.Nick, peerTxEnable)
-	go peerdiscovery.PeerMonitor(33324, peerUpdateCh)
+	//go peerdiscovery.HeartBeatBeacon(33324, ownID.Nick, peerTxEnable)
+	go peerdiscovery.Start(33324, ownID.Nick, peerUpdateCh)
 
 	go driver.Init(simPort, logger)
 
