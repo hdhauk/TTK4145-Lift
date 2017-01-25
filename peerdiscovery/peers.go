@@ -17,6 +17,13 @@ type PeerUpdate struct {
 	Lost  []string
 }
 
+type peer struct {
+	ip        string
+	name      string
+	firstSeen time.Time
+	lastSeen  time.Time
+}
+
 const interval = 15 * time.Millisecond
 const timeout = 50 * time.Millisecond
 
@@ -39,14 +46,13 @@ func HeartBeatBeacon(port int, id string, transmitEnable <-chan bool) {
 	}
 }
 
-// PeerMonitor listens to the heartbeats from other peers and post any changes
-// to the known peer-network to the channel PeerUpdate
-func PeerMonitor(port int, peerUpdateCh chan<- PeerUpdate) {
-
+// Start initiate listening for other peers while also start broadcasting
+// to others
+func Start(port int, onNewPeer func(IP string), onLostPeer func(IP string)) {
 	var buf [1024]byte
-	var p PeerUpdate
-	lastSeen := make(map[string]time.Time)
-
+	//var p PeerUpdate
+	//lastSeen := make(map[string]time.Time)
+	peers := make(map[string]peer)
 	conn := DialBroadcastUDP(port)
 
 	for {
@@ -58,10 +64,10 @@ func PeerMonitor(port int, peerUpdateCh chan<- PeerUpdate) {
 		id := string(buf[:n])
 
 		// Adding new connection
-		p.New = ""
 		if id != "" {
-			if _, idExists := lastSeen[id]; !idExists {
-				p.New = id
+			if _, idExists := peers[id]; !idExists {
+				// Previusly unknown host
+				peers[id] = peer{ip:}
 				updated = true
 			}
 
