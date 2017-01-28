@@ -29,6 +29,24 @@ type Config struct {
 	onBtnPress     func(btnType string, floor int)
 }
 
+var driver = struct {
+	init         func(port string)
+	setMotorDir  func(dir string)
+	setBtnLED    func(btn Btn, active bool)
+	setFloorLED  func(floor int)
+	setDoorLED   func(isOpen bool)
+	readOrderBtn func(btn Btn) bool
+	readFloor    func() (atFloor bool, floor int)
+}{
+	init:         initSim,
+	setMotorDir:  setMotorDirSim,
+	setBtnLED:    setBtnLEDSim,
+	setFloorLED:  setFloorLEDSim,
+	setDoorLED:   setDoorLEDSim,
+	readOrderBtn: readOrderBtnSim,
+	readFloor:    readFloorSim,
+}
+
 // Init intializes the driver, and return an error if unable to connect to
 // the driver or the simulator.
 func Init(c Config) error {
@@ -38,8 +56,15 @@ func Init(c Config) error {
 		return err
 	}
 
-	if cfg.simMode {
-		go initSim(cfg.simPort)
+	// Assign either hardware or simulator functions to driver handle
+	if cfg.simMode == false {
+		driver.init = initHW
+		driver.setMotorDir = setMotorDirHW
+		driver.setBtnLED = setBtnLEDHW
+		driver.setFloorLED = setFloorLEDHW
+		driver.setDoorLED = setDoorLEDHW
+		driver.readOrderBtn = readOrderBtnHW
+		driver.readFloor = readFloorHW
 	}
 
 	// Spawn workers

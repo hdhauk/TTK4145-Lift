@@ -8,7 +8,7 @@ func eventHandler() {
 	// Initalize datastores
 	var hallUpBtns, hallDownBtns, CabBtns map[int]bool
 	lastFloor := 0
-	lastDir := "STOP"
+	lastDir := stop
 
 	for {
 		select {
@@ -18,17 +18,17 @@ func eventHandler() {
 			switch btn.Type {
 			case HallUp:
 				if hallUpBtns[btn.Floor] == false {
-					setBtnLEDSim(btn, true)
+					driver.setBtnLED(btn, true)
 					cfg.onBtnPress(btn.Type.String(), btn.Floor)
 				}
 			case HallDown:
 				if hallDownBtns[btn.Floor] == false {
-					setBtnLEDSim(btn, true)
+					driver.setBtnLED(btn, true)
 					cfg.onBtnPress(btn.Type.String(), btn.Floor)
 				}
 			case Cab:
 				if CabBtns[btn.Floor] == false {
-					setBtnLEDSim(btn, true)
+					driver.setBtnLED(btn, true)
 					cfg.onBtnPress(btn.Type.String(), btn.Floor)
 				}
 			}
@@ -38,6 +38,8 @@ func eventHandler() {
 			if floor != lastFloor {
 				lastFloor = floor
 				cfg.onFloorDetect(floor)
+				// Pass newly detected floor on to the Autopilot
+				apFloor <- floor
 			}
 
 		// Direction changed

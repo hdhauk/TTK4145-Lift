@@ -45,7 +45,7 @@ func main() {
 		fmt.Printf("IP = %v\n", IP)
 	})
 
-	go driver.Init(simPort, logger)
+	go driver.Init(true, simPort)
 
 	for {
 		select {

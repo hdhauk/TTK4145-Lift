@@ -5,8 +5,6 @@ and that the carrige always have a closed door unless stationary at a floor.
 */
 package driver
 
-var floorDstCh = make(chan int)
-
 // GoToFloor sends the elevator carrige to the desired floor and stop there,
 // unless it is stopped before arriving at its destination.
 // A second call to the function will void the previous order if the carrige
@@ -33,6 +31,10 @@ const (
 	HallDown
 	// Cab is located inside of the elevator
 	Cab
+
+	stop = "STOP"
+	up   = "UP"
+	down = "DOWN"
 )
 
 // Btn defines a custom type representing a hardware-button. Floor may be nil.
