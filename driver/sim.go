@@ -4,26 +4,24 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"strconv"
 )
 
 var simPort string
 var txWithResp = make(chan string)
 var txWithoutResp = make(chan string)
 var rx = make(chan []byte)
-var abort = make(chan bool)
+var closeSimConn = make(chan bool)
 
 func initSim(simPort string) {
 
 	if err := validatePort(simPort); err != nil {
-		logger.Critical("Invalid port. Try again with a valid port (1024-65535)")
 		os.Exit(1)
 	}
 
 	connStr := fmt.Sprintf("localhost:%s", simPort)
 	conn, err := net.Dial("tcp", connStr)
 	if err != nil {
-		logger.Critical("Failed to connect to simulator. Make sure it it running and try again.")
+		fmt.Println("Failed to connect to simulator. Make sure it it running and try again.")
 		os.Exit(1)
 	}
 	defer conn.Close()
@@ -37,6 +35,8 @@ func initSim(simPort string) {
 			rx <- resp
 		case cmd := <-txWithoutResp:
 			fmt.Fprintf(conn, cmd)
+		case <-closeSimConn:
+			break
 		}
 	}
 }
@@ -57,17 +57,6 @@ func btoi(b bool) int {
 		return 1
 	}
 	return 0
-}
-
-func validatePort(port string) error {
-	i, err := strconv.Atoi(port)
-	if err != nil {
-		return err
-	}
-	if i < 1024 || i > 65535 {
-		return fmt.Errorf("port %d not in valid range range (1024-65553)", i)
-	}
-	return nil
 }
 
 // Hex command generators
