@@ -1,3 +1,7 @@
+/*
+Package peerdiscovery provides automatic detection of other peers in the same subnet.
+It does this by utlizing broadcastmessages over UDP.
+*/
 package peerdiscovery
 
 import (
