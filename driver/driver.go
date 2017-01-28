@@ -23,12 +23,6 @@ func StopAtNextFloor() {
 
 }
 
-// Btn defines a custom type representing a hardware-button. Floor may be nil.
-type Btn struct {
-	Floor int
-	Type  BtnType
-}
-
 // BtnType ..
 type BtnType int
 
@@ -40,3 +34,21 @@ const (
 	// Cab is located inside of the elevator
 	Cab
 )
+
+// Btn defines a custom type representing a hardware-button. Floor may be nil.
+type Btn struct {
+	Floor int
+	Type  BtnType
+}
+
+func (bt *BtnType) String() string {
+	switch *bt {
+	case HallUp:
+		return "HallUp"
+	case HallDown:
+		return "HallDown"
+	case Cab:
+		return "Cab"
+	}
+	return ""
+}

@@ -2,8 +2,6 @@ package driver
 
 import "time"
 
-var btnPressCh = make(chan Btn, 4)
-
 func simBtnScan() {
 	sleeptime := 20 * time.Microsecond
 	for {
@@ -21,13 +19,23 @@ func simBtnScan() {
 						btnPressCh <- Btn{Floor: f, Type: b}
 					}
 				}
-			} else { // All floors inbetween
+			} else { // All floors in between
 				for _, b := range []BtnType{HallUp, HallDown, Cab} {
 					if readOrderBtnSim(Btn{Floor: f, Type: b}) {
 						btnPressCh <- Btn{Floor: f, Type: b}
 					}
 				}
 			}
+		}
+		time.Sleep(sleeptime)
+	}
+}
+
+func simFloorDetect() {
+	sleeptime := 20 * time.Microsecond
+	for {
+		if atFloor, floor := readFloorSim(); atFloor {
+			floorDetectCh <- floor
 		}
 		time.Sleep(sleeptime)
 	}
