@@ -17,7 +17,17 @@ func GoToFloor(floor int) {
 
 // StopAtNextFloor safely stop the elevator the next time it is in a floor and
 // open the door.
-func StopAtNextFloor() {
+// func StopAtNextFloor() {
+//
+// }
+
+// BtnLEDClear turns off the LED in the provided button.
+func BtnLEDClear(b Btn) {
+
+}
+
+// BtnLEDSet turns on the LED in the provided button.
+func BtnLEDSet(b Btn) {
 
 }
 

@@ -21,7 +21,7 @@ import "time"
 
 // Init intializes the raft-node to be prepared to join a raft-cluster of size
 // given by nodes. It sets up all nessesary listeners.
-func Init(nodes int) {
+func Init(nodes int, onPromotion func(), onDemotion func()) {
 	// cfg := raft.DefaultConfig()
 
 }
@@ -73,4 +73,10 @@ type Status struct {
 	AssignedTo string    // elevator.id
 	LastStatus string    // "UNASSIGNED", "ASSIGNED", "DONE"
 	LastChange time.Time //
+}
+
+// DispatchOrder dispatches an order to the provided elevator.
+// The function will do nothing if the elevator isn't the master.
+func DispatchOrder(floor int, dir string, elevatorID string) error {
+	return nil
 }
