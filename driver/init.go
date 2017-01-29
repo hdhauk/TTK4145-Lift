@@ -3,16 +3,23 @@ package driver
 import (
 	"fmt"
 	"strconv"
+	"time"
 )
 
 // Default config
 var cfg = Config{
-	SimMode:        true,
-	SimPort:        "53566",
-	Floors:         4,
-	OnFloorDetect:  func(f int) { fmt.Println("onFloorDetect callback not set!") },
-	OnNewDirection: func(dir string) { fmt.Println("onNewDirection callback not set!") },
-	OnBtnPress:     func(btnType string, floor int) { fmt.Println("onBtnPress callback not set!") },
+	SimMode: true,
+	SimPort: "53566",
+	Floors:  4,
+	OnFloorDetect: func(f int) {
+		fmt.Printf("onFloorDetect callback not set! Floor: %v\n", f)
+	},
+	OnNewDirection: func(dir string) {
+		fmt.Printf("onNewDirection callback not set! Dir: %v\n", dir)
+	},
+	OnBtnPress: func(btnType string, floor int) {
+		fmt.Printf("onBtnPress callback not set! Type: %v, Floor: %v\n", btnType, floor)
+	},
 }
 
 // Config defines the properties of the elevator and callbacks to the following
@@ -47,6 +54,8 @@ var driver = struct {
 	readFloor:    readFloorSim,
 }
 
+var initDone = make(chan bool)
+
 // Init intializes the driver, and return an error if unable to connect to
 // the driver or the simulator.
 func Init(c Config) error {
@@ -67,8 +76,18 @@ func Init(c Config) error {
 		driver.readFloor = readFloorHW
 	}
 
+	fmt.Println("Config set")
+	if cfg.SimMode == true {
+		go simBtnScan()
+		go simFloorDetect()
+	}
+
 	// Spawn workers
 	// TODO: What workers do we need here ¯\_(ツ)_/¯
+	go eventHandler()
+	go autoPilot()
+	go initSim(cfg.SimPort)
+	time.Sleep(1 * time.Hour)
 
 	return nil
 }
