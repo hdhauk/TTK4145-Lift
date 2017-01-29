@@ -21,7 +21,8 @@ func StopAtNextFloor() {
 
 }
 
-// BtnType ..
+// BtnType defines the 3 types of buttons that are in use. In order to use the
+// correct integer, the types are available as constants.
 type BtnType int
 
 const (
@@ -43,6 +44,7 @@ type Btn struct {
 	Type  BtnType
 }
 
+// String exports the integer BtnType to a string (either "HallUP","HallDown" or"Cab")
 func (bt *BtnType) String() string {
 	switch *bt {
 	case HallUp:

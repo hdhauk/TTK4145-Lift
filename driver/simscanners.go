@@ -6,14 +6,14 @@ func simBtnScan() {
 	sleeptime := 20 * time.Microsecond
 	for {
 		// Iterate over all buttons
-		for f := 0; f < cfg.floors; f++ {
+		for f := 0; f < cfg.Floors; f++ {
 			if f == 0 { // Special case: no HallDown in first floor
 				for _, b := range []BtnType{HallUp, Cab} {
 					if readOrderBtnSim(Btn{Floor: f, Type: b}) {
 						btnPressCh <- Btn{Floor: f, Type: b}
 					}
 				}
-			} else if f == cfg.floors-1 { // Special case: no HallUp in top floor
+			} else if f == cfg.Floors-1 { // Special case: no HallUp in top floor
 				for _, b := range []BtnType{HallDown, Cab} {
 					if readOrderBtnSim(Btn{Floor: f, Type: b}) {
 						btnPressCh <- Btn{Floor: f, Type: b}

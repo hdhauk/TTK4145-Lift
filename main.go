@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"time"
 
-	"bitbucket.org/halvor_haukvik/ttk4145-elevator/driver"
 	"bitbucket.org/halvor_haukvik/ttk4145-elevator/peerdiscovery"
 )
 
@@ -45,7 +44,7 @@ func main() {
 		fmt.Printf("IP = %v\n", IP)
 	})
 
-	go driver.Init(true, simPort)
+	//go driver.Init(true, simPort)
 
 	for {
 		select {

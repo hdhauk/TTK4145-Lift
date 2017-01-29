@@ -1,6 +1,7 @@
 /*
-Package globalstate is wrapper package for CoreOS' implementation of the
-Raft consensus protocol. See https://github.com/hashicorp/raft
+Package globalstate is wrapper package for Hashicorps' implementation of the
+Raft consensus protocol. See https://github.com/hashicorp/raft.
+
 For a description of how the Raft algorithm works see:
  - http://thesecretlivesofdata.com/raft/
  - https://raft.github.io/
@@ -50,20 +51,26 @@ type State struct {
 	// ClusterSize is the number of nodes in the cluster
 	ClusterSize uint
 	// Nodes is the IP:port of all nodes in the system
-	Nodes []elevator
+	Nodes []Elevator
 	// HallUpButtons, true of they are lit. Equivalent with an order there
-	HallUpButtons  []status
-	HallDownButton []status
+	HallUpButtons  []Status
+	HallDownButton []Status
 }
 
-type elevator struct {
-	id            string
-	lastFloor     uint
-	lastDirection uint
+// Elevator defines the publicly available information about the elevators in the cluster.
+type Elevator struct {
+	ID            string
+	LastFloor     uint
+	LastDirection uint
 }
 
-type status struct {
-	assignedTo string    // elevator.id
-	lastStatus string    // "UNASSIGNED", "ASSIGNED", "DONE"
-	lastChange time.Time //
+// Status defines the status of a button.
+//All buttons of the same type on the same floor are considered equal,
+//and as long as the elevator is online will behave the exact same way.
+// ie. will pressing the up-button at floor 3 on one elevator yield the same
+// result as pressing the same button on another elevator.
+type Status struct {
+	AssignedTo string    // elevator.id
+	LastStatus string    // "UNASSIGNED", "ASSIGNED", "DONE"
+	LastChange time.Time //
 }

@@ -7,26 +7,26 @@ import (
 
 // Default config
 var cfg = Config{
-	simMode:        true,
-	simPort:        "53566",
-	floors:         4,
-	onFloorDetect:  func(f int) { fmt.Println("onFloorDetect callback not set!") },
-	onNewDirection: func(dir string) { fmt.Println("onNewDirection callback not set!") },
-	onBtnPress:     func(btnType string, floor int) { fmt.Println("onBtnPress callback not set!") },
+	SimMode:        true,
+	SimPort:        "53566",
+	Floors:         4,
+	OnFloorDetect:  func(f int) { fmt.Println("onFloorDetect callback not set!") },
+	OnNewDirection: func(dir string) { fmt.Println("onNewDirection callback not set!") },
+	OnBtnPress:     func(btnType string, floor int) { fmt.Println("onBtnPress callback not set!") },
 }
 
 // Config defines the properties of the elevator and callbacks to the following
 // events:
-//  * onFloorDetect - The elevator just reached a floor. May or may not stop there.
-//  * onNewDirection - The elevator either stopped or started moving in either direction.
-//  * onBtnPress - A button have been depressed.
+//  * OnFloorDetect - The elevator just reached a floor. May or may not stop there.
+//  * OnNewDirection - The elevator either stopped or started moving in either direction.
+//  * OnBtnPress - A button have been depressed.
 type Config struct {
-	simMode        bool
-	simPort        string
-	floors         int
-	onFloorDetect  func(floor int)
-	onNewDirection func(direction string)
-	onBtnPress     func(btnType string, floor int)
+	SimMode        bool
+	SimPort        string
+	Floors         int
+	OnFloorDetect  func(floor int)
+	OnNewDirection func(direction string)
+	OnBtnPress     func(btnType string, floor int)
 }
 
 var driver = struct {
@@ -57,7 +57,7 @@ func Init(c Config) error {
 	}
 
 	// Assign either hardware or simulator functions to driver handle
-	if cfg.simMode == false {
+	if cfg.SimMode == false {
 		driver.init = initHW
 		driver.setMotorDir = setMotorDirHW
 		driver.setBtnLED = setBtnLEDHW
@@ -75,24 +75,24 @@ func Init(c Config) error {
 
 // Config helper functions
 func setConfig(c Config) error {
-	if c.simMode {
-		if err := validatePort(c.simPort); err != nil {
+	if c.SimMode {
+		if err := validatePort(c.SimPort); err != nil {
 			return err
 		}
 	}
-	if c.floors < 0 {
-		return fmt.Errorf("negative number of floors (%v) not supported", c.floors)
+	if c.Floors < 0 {
+		return fmt.Errorf("negative number of floors (%v) not supported", c.Floors)
 	}
 
 	// Check set provided callbacks
-	if c.onFloorDetect != nil {
-		cfg.onFloorDetect = c.onFloorDetect
+	if c.OnFloorDetect != nil {
+		cfg.OnFloorDetect = c.OnFloorDetect
 	}
-	if c.onBtnPress != nil {
-		cfg.onBtnPress = c.onBtnPress
+	if c.OnBtnPress != nil {
+		cfg.OnBtnPress = c.OnBtnPress
 	}
-	if c.onNewDirection != nil {
-		cfg.onNewDirection = c.onNewDirection
+	if c.OnNewDirection != nil {
+		cfg.OnNewDirection = c.OnNewDirection
 	}
 	return nil
 }

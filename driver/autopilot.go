@@ -20,6 +20,7 @@ func autoPilot() {
 				driver.setMotorDir(d2d)
 				currentDir = d2d
 			}
+
 		// New destination given
 		case dst := <-floorDstCh:
 			dstFloor = dst
