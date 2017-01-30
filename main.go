@@ -7,9 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	"bitbucket.org/halvor_haukvik/ttk4145-elevator/hw"
-	"bitbucket.org/halvor_haukvik/ttk4145-elevator/msg"
-	"bitbucket.org/halvor_haukvik/ttk4145-elevator/network"
+	"bitbucket.org/halvor_haukvik/ttk4145-elevator/peerdiscovery"
 )
 
 const (
@@ -22,7 +20,7 @@ func main() {
 	// Handle application command-line flags
 	var nick string
 	var simPort string
-	flag.StringVar(&nick, "nick", "", "nick name name of this peer")
+	flag.StringVar(&nick, "nick", "", "nick name of this peer")
 	flag.StringVar(&simPort, "sim", "", "listening port of the simulator")
 	flag.Parse()
 	if simPort != "" {
@@ -36,30 +34,22 @@ func main() {
 	}
 
 	// Setting up communication channels
-	peerUpdateCh := make(chan network.PeerUpdate)
-	peerTxEnable := make(chan bool)
-	rxOrderCh := make(chan msg.ExtOrder)
-	txOrderCh := make(chan msg.ExtOrder)
+	// peerUpdateCh := make(chan peerdiscovery.PeerUpdate)
+	//peerTxEnable := make(chan bool)
 
 	// Setting up running routines
-	go network.HeartBeatBeacon(33324, ownID.Nick, peerTxEnable)
-	go network.PeerMonitor(33324, peerUpdateCh)
-	go network.BcastReceiver(36969, rxOrderCh)
-	go network.BcastTransmitter(36969, txOrderCh)
-	go func(id string) {
-		time.Sleep(3 * time.Second)
-		fmt.Println("sending order")
-		txOrderCh <- msg.ExtOrder{OrderID: makeUUID(), SrcID: id, Dir: "UP", Floor: 3}
-	}(ownID.ID)
+	//go peerdiscovery.HeartBeatBeacon(33324, ownID.Nick, peerTxEnable)
+	go peerdiscovery.Start(33324, ownID.Nick, func(id, IP string) {
+		fmt.Printf("ID = %v\n", id)
+		fmt.Printf("IP = %v\n", IP)
+	})
 
-	go hw.Init(simPort, logger)
+	//go driver.Init(true, simPort)
 
 	for {
 		select {
-		case p := <-peerUpdateCh:
-			logPeerUpdate(p)
-		case o := <-rxOrderCh:
-			fmt.Println(o)
+		case <-time.After(1 * time.Second):
+			//logPeerUpdate(p)
 
 		}
 	}
@@ -69,7 +59,7 @@ func peerName(id string) string {
 	if id == "" {
 		id = strconv.Itoa(os.Getpid())
 	}
-	localIP, err := network.LocalIP()
+	localIP, err := peerdiscovery.GetLocalIP()
 	if err != nil {
 		logger.Warning("Not connected to the internet.")
 		localIP = "DISCONNECTED"

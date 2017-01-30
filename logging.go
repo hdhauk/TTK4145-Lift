@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"bitbucket.org/halvor_haukvik/ttk4145-elevator/network"
+	"bitbucket.org/halvor_haukvik/ttk4145-elevator/peerdiscovery"
 
 	"github.com/op/go-logging"
 )
@@ -21,7 +21,7 @@ func initLogger() {
 
 }
 
-func logPeerUpdate(p network.PeerUpdate) {
+func logPeerUpdate(p peerdiscovery.PeerUpdate) {
 	logger.Notice("Peer update:\n")
 	//fmt.Printf("\tPeers:\t%q\n", p.Peers)
 	printPeerArr(p.Peers)

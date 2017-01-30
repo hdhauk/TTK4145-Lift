@@ -1,6 +1,6 @@
 // +build !windows
 
-package network
+package peerdiscovery
 
 import (
 	"net"
@@ -22,7 +22,7 @@ https://github.com/golang/go/issues/9503
 https://github.com/golang/go/issues/9661
 */
 
-func DialBroadcastUDP(port int) net.PacketConn {
+func dialBroadcastUDP(port int) net.PacketConn {
 	s, _ := syscall.Socket(syscall.AF_INET, syscall.SOCK_DGRAM, syscall.IPPROTO_UDP)
 	syscall.SetsockoptInt(s, syscall.SOL_SOCKET, syscall.SO_REUSEADDR, 1)
 	syscall.SetsockoptInt(s, syscall.SOL_SOCKET, syscall.SO_BROADCAST, 1)
