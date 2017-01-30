@@ -65,7 +65,6 @@ func btoi(b bool) int {
 // Hex command generators
 //==============================================================================
 func cmdMotorDir(dir string) string {
-	fmt.Printf("simconn.go: cmdMotorDir(%v)\n", dir)
 	switch dir {
 	case "UP":
 		return "\x01\x01\x00\x00"
@@ -98,7 +97,6 @@ func cmdReadOrderBtn(btn Btn) string {
 // Emulated elevator functions
 //==============================================================================
 func setMotorDirSim(dir string) {
-	fmt.Printf("simconn.go: setMotorDirSim(%v)\n", dir)
 	sendCmd("GET " + cmdMotorDir(dir))
 }
 

@@ -5,11 +5,17 @@ and that the carrige always have a closed door unless stationary at a floor.
 */
 package driver
 
+import "fmt"
+
 // GoToFloor sends the elevator carrige to the desired floor and stop there,
 // unless it is stopped before arriving at its destination.
 // A second call to the function will void the previous order if the carrige
 // haven't reached its destination.
 func GoToFloor(floor int) {
+	if floor > cfg.Floors-1 || floor < 0 {
+		fmt.Println("How about going to a floor that actually exists, hu! ...smartass...")
+		return
+	}
 	if floor >= 0 {
 		floorDstCh <- floor
 	}

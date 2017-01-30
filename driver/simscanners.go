@@ -32,10 +32,12 @@ func simBtnScan() {
 }
 
 func simFloorDetect() {
-	sleeptime := 20 * time.Microsecond
+	sleeptime := 1 * time.Millisecond
 	for {
 		if atFloor, floor := readFloorSim(); atFloor {
 			floorDetectCh <- floor
+		} else {
+			floorDetectCh <- -1
 		}
 		time.Sleep(sleeptime)
 	}
