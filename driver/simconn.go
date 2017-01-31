@@ -12,6 +12,8 @@ var txWithoutResp = make(chan string)
 var rx = make(chan []byte)
 var closeSimConn = make(chan bool)
 
+// Emulated elevator functions
+//==============================================================================
 func initSim(simPort string) {
 
 	if err := validatePort(simPort); err != nil {
@@ -42,6 +44,32 @@ func initSim(simPort string) {
 			break
 		}
 	}
+}
+
+func setMotorDirSim(dir string) {
+	sendCmd("GET " + cmdMotorDir(dir))
+}
+
+func setBtnLEDSim(btn Btn, active bool) {
+	sendCmd("GET " + cmdBtnLED(btn, active))
+}
+
+func setFloorLEDSim(floor int) {
+	sendCmd("GET " + cmdFloorLED(floor))
+}
+
+func setDoorLEDSim(isOpen bool) {
+	sendCmd("GET " + cmdDoorLED(isOpen))
+}
+
+func readOrderBtnSim(btn Btn) bool {
+	resp := poll("GET " + cmdReadOrderBtn(btn))
+	return resp[1] == 1
+}
+
+func readFloorSim() (atFloor bool, floor int) {
+	resp := poll("GET \x07\x00\x00\x00")
+	return (resp[1] != 0), int(resp[2])
 }
 
 // Helper functions
@@ -92,32 +120,4 @@ func cmdDoorLED(isOpen bool) string {
 
 func cmdReadOrderBtn(btn Btn) string {
 	return string([]byte{6, byte(btn.Type), byte(btn.Floor), 0})
-}
-
-// Emulated elevator functions
-//==============================================================================
-func setMotorDirSim(dir string) {
-	sendCmd("GET " + cmdMotorDir(dir))
-}
-
-func setBtnLEDSim(btn Btn, active bool) {
-	sendCmd("GET " + cmdBtnLED(btn, active))
-}
-
-func setFloorLEDSim(floor int) {
-	sendCmd("GET " + cmdFloorLED(floor))
-}
-
-func setDoorLEDSim(isOpen bool) {
-	sendCmd("GET " + cmdDoorLED(isOpen))
-}
-
-func readOrderBtnSim(btn Btn) bool {
-	resp := poll("GET " + cmdReadOrderBtn(btn))
-	return resp[1] == 1
-}
-
-func readFloorSim() (atFloor bool, floor int) {
-	resp := poll("GET \x07\x00\x00\x00")
-	return (resp[1] != 0), int(resp[2])
 }
