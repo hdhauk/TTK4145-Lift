@@ -3,58 +3,14 @@ package driver
 import (
 	"fmt"
 	"strconv"
-	"time"
 )
 
-// Default config
-var cfg = Config{
-	SimMode: true,
-	SimPort: "53566",
-	Floors:  4,
-	OnFloorDetect: func(f int) {
-		fmt.Printf("onFloorDetect callback not set! Floor: %v\n", f)
-	},
-	OnNewDirection: func(dir string) {
-		fmt.Printf("onNewDirection callback not set! Dir: %v\n", dir)
-	},
-	OnBtnPress: func(btnType string, floor int) {
-		fmt.Printf("onBtnPress callback not set! Type: %v, Floor: %v\n", btnType, floor)
-	},
-}
-
-// Config defines the properties of the elevator and callbacks to the following
-// events:
-//  * OnFloorDetect - The elevator just reached a floor. May or may not stop there.
-//  * OnNewDirection - The elevator either stopped or started moving in either direction.
-//  * OnBtnPress - A button have been depressed.
-type Config struct {
-	SimMode        bool
-	SimPort        string
-	Floors         int
-	OnFloorDetect  func(floor int)
-	OnNewDirection func(direction string)
-	OnBtnPress     func(btnType string, floor int)
-}
-
-var driver = struct {
-	init         func(port string)
-	setMotorDir  func(dir string)
-	setBtnLED    func(btn Btn, active bool)
-	setFloorLED  func(floor int)
-	setDoorLED   func(isOpen bool)
-	readOrderBtn func(btn Btn) bool
-	readFloor    func() (atFloor bool, floor int)
-}{
-	init:         initSim,
-	setMotorDir:  setMotorDirSim,
-	setBtnLED:    setBtnLEDSim,
-	setFloorLED:  setFloorLEDSim,
-	setDoorLED:   setDoorLEDSim,
-	readOrderBtn: readOrderBtnSim,
-	readFloor:    readFloorSim,
-}
-
-var initDone = make(chan bool)
+// Package global channels
+var initDone chan bool
+var floorDstCh chan int
+var btnPressCh chan Btn
+var floorDetectCh chan int
+var apFloorCh chan int
 
 // Init intializes the driver, and return an error if unable to connect to
 // the driver or the simulator.
@@ -76,20 +32,76 @@ func Init(c Config) error {
 		driver.readFloor = readFloorHW
 	}
 
-	fmt.Println("Config set")
+	// Initialize channels
+	initDone = make(chan bool)
+	btnPressCh = make(chan Btn, 4)
+	floorDetectCh = make(chan int)
+	apFloorCh = make(chan int)
+	floorDstCh = make(chan int)
+
 	if cfg.SimMode == true {
-		go simBtnScan()
-		go simFloorDetect()
+		go simBtnScan(btnPressCh)
+		go simFloorDetect(floorDetectCh)
 	}
 
 	// Spawn workers
 	// TODO: What workers do we need here ¯\_(ツ)_/¯
-	go eventHandler()
-	go autoPilot()
+	//go eventHandler(btnPressCh, floorDetectCh)
+	go btnPressHandler(btnPressCh)
+	go floorDetectHandler(floorDetectCh, apFloorCh)
+	go autoPilot(apFloorCh)
 	go initSim(cfg.SimPort)
-	time.Sleep(1 * time.Hour)
 
-	return nil
+	// Block until stack unwind
+	select {}
+}
+
+// Default config
+var cfg = Config{
+	SimMode: true,
+	SimPort: "53566",
+	Floors:  4,
+	OnFloorDetect: func(f int) {
+		fmt.Printf("onFloorDetect callback not set! Floor: %v\n", f)
+	},
+	OnNewDirection: func(dir string) {
+		fmt.Printf("onNewDirection callback not set! Dir: %v\n", dir)
+	},
+	OnBtnPress: func(b Btn) {
+		fmt.Printf("onBtnPress callback not set! Type: %v, Floor: %v\n", b.Type, b.Floor)
+	},
+}
+
+// Config defines the properties of the elevator and callbacks to the following
+// events:
+//  * OnFloorDetect - The elevator just reached a floor. May or may not stop there.
+//  * OnNewDirection - The elevator either stopped or started moving in either direction.
+//  * OnBtnPress - A button have been depressed.
+type Config struct {
+	SimMode        bool
+	SimPort        string
+	Floors         int
+	OnFloorDetect  func(floor int)
+	OnNewDirection func(direction string)
+	OnBtnPress     func(b Btn)
+}
+
+var driver = struct {
+	init         func(port string)
+	setMotorDir  func(dir string)
+	setBtnLED    func(btn Btn, active bool)
+	setFloorLED  func(floor int)
+	setDoorLED   func(isOpen bool)
+	readOrderBtn func(btn Btn) bool
+	readFloor    func() (atFloor bool, floor int)
+}{
+	init:         initSim,
+	setMotorDir:  setMotorDirSim,
+	setBtnLED:    setBtnLEDSim,
+	setFloorLED:  setFloorLEDSim,
+	setDoorLED:   setDoorLEDSim,
+	readOrderBtn: readOrderBtnSim,
+	readFloor:    readFloorSim,
 }
 
 // Config helper functions

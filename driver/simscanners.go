@@ -2,7 +2,7 @@ package driver
 
 import "time"
 
-func simBtnScan() {
+func simBtnScan(btnPressCh chan<- Btn) {
 	sleeptime := 20 * time.Microsecond
 	for {
 		// Iterate over all buttons
@@ -31,7 +31,7 @@ func simBtnScan() {
 	}
 }
 
-func simFloorDetect() {
+func simFloorDetect(floorDetectCh chan<- int) {
 	sleeptime := 1 * time.Millisecond
 	for {
 		if atFloor, floor := readFloorSim(); atFloor {

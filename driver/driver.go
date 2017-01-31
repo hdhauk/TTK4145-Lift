@@ -29,12 +29,14 @@ func GoToFloor(floor int) {
 
 // BtnLEDClear turns off the LED in the provided button.
 func BtnLEDClear(b Btn) {
-
+	// TODO: Check for race conditions
+	driver.setBtnLED(b, false)
 }
 
 // BtnLEDSet turns on the LED in the provided button.
 func BtnLEDSet(b Btn) {
-
+	// TODO: Check for race conditions
+	driver.setBtnLED(b, true)
 }
 
 // BtnType defines the 3 types of buttons that are in use. In order to use the

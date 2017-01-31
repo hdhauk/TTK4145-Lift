@@ -5,10 +5,7 @@ import (
 	"time"
 )
 
-var floorDstCh = make(chan int)
-var apFloor = make(chan int)
-
-func autoPilot() {
+func autoPilot(apFloorCh <-chan int) {
 	// lastFloor := 0
 	// dstFloor := 0
 	currentDir := stop
@@ -22,12 +19,12 @@ func autoPilot() {
 	// Drive up to a well defined floor
 	var lastFloor, dstFloor int
 	select {
-	case f := <-apFloor:
+	case f := <-apFloorCh:
 		lastFloor = f
 		dstFloor = f
 	case <-time.After(1 * time.Second):
 		driver.setMotorDir(up)
-		lastFloor = <-apFloor
+		lastFloor = <-apFloorCh
 		driver.setMotorDir(stop)
 		currentDir = stop
 		dstFloor = lastFloor
@@ -38,13 +35,13 @@ func autoPilot() {
 	selector:
 		select {
 		// Arrived at new floor
-		case f := <-apFloor:
+		case f := <-apFloorCh:
 			lastFloor = f
 			/*
 				- Case 1: This is my destination
 						-> stop -> open door
 				- Case 2: This is NOT my destination
-						-> Make sure the target destination is in the direction of travel
+						-> Make sure the target destination is floorDstChin the direction of travel
 						-> If everything is OK carry on
 			*/
 			fmt.Printf("autopilot.go: At floor: %v\t dstFloor: %v\n", f, dstFloor)
