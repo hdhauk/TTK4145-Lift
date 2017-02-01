@@ -22,7 +22,7 @@ func Init(c Config) error {
 	}
 
 	// Assign either hardware or simulator functions to driver handle
-	if cfg.SimMode == false {
+	if c.SimMode == false {
 		driver.init = initHW
 		driver.setMotorDir = setMotorDirHW
 		driver.setBtnLED = setBtnLEDHW
@@ -39,18 +39,15 @@ func Init(c Config) error {
 	apFloorCh = make(chan int)
 	floorDstCh = make(chan int)
 
-	if cfg.SimMode == true {
-		go simBtnScan(btnPressCh)
-		go simFloorDetect(floorDetectCh)
-	}
-
 	// Spawn workers
+	go btnScan(btnPressCh)
+	go floorDetect(floorDetectCh)
 	// TODO: What workers do we need here ¯\_(ツ)_/¯
 	//go eventHandler(btnPressCh, floorDetectCh)
 	go btnPressHandler(btnPressCh)
 	go floorDetectHandler(floorDetectCh, apFloorCh)
 	go autoPilot(apFloorCh)
-	go initSim(cfg.SimPort)
+	go driver.init(cfg.SimPort)
 
 	// Block until stack unwind
 	select {}
