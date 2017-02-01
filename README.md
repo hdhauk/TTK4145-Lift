@@ -16,49 +16,50 @@ The simulator does not work properly in MacOS.
 * Make sure your Go enviroment is set up correctly:
 
   The location of the project should look something like this:
-  ```
+~~~~
   $GOPATH/
     ↳ src/
       ↳ bitbucket.org/
         ↳ halvor_haukvik/
           ↳ ttk4145-elevator/
-  ```
+~~~~
 
 ### 1 .Install Comedi drivers
 Download the drivers from [comedi.org](http://www.comedi.org/download/comedilib-0.10.2.tar.gz).
 Extract the tarball and open a terminal in the folder and install the library :
-```
+~~~~
 ./configure
 make
-sudo make install```
+sudo make install
+~~~~
 
 ### 2. Install Go dependencies
 The project utilize several publicly available libraries, most notably Hashicorps Raft library.
 To download all necessary dependencies open a terminal window in the project folder and run
-```
+~~~~
 cd $GOPATH/src/bitbucket.org/halvor_haukvik/ttk4145-elevator
 go get -t ./..
-```
+~~~~
 
 ### 3. Install testing tools (Optional)
-```
+~~~~
 sudo apt-get update
 sudo apt-get install xdotool
-```
+~~~~
 
 ### 4. Build the project
-```
+~~~~
 cd $GOPATH/src/bitbucket.org/halvor_haukvik/ttk4145-elevator
 go build .
-```
+~~~~
 
 ## Usage
 
 If you are intending to run in simulator mode first start the simulator on the local host:
-```
+~~~~
 cd $GOPATH/src/bitbucket.org/halvor_haukvik/ttk4145-elevator/driver/simulators/simulator1-53566
 rdmd sim_server.d
-```
+~~~~
 
 Run the project with the command `./ttk4145-elevator`.
 The following options are available
