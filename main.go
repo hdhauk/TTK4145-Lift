@@ -17,7 +17,7 @@ const (
 
 func main() {
 	initLogger()
-	// Handle application command-line flags
+	// Parse arg flags
 	var nick string
 	var simPort string
 	flag.StringVar(&nick, "nick", "", "nick name of this peer")
@@ -33,13 +33,9 @@ func main() {
 		ID: makeUUID(), Nick: peerName(nick),
 	}
 
-	// Setting up communication channels
-	// peerUpdateCh := make(chan peerdiscovery.PeerUpdate)
-	//peerTxEnable := make(chan bool)
-
-	// Setting up running routines
-	//go peerdiscovery.HeartBeatBeacon(33324, ownID.Nick, peerTxEnable)
+	// Start peer discovery
 	go peerdiscovery.Start(33324, ownID.Nick, func(id, IP string) {
+		// Callback on new peer
 		fmt.Printf("ID = %v\n", id)
 		fmt.Printf("IP = %v\n", IP)
 	})

@@ -13,7 +13,7 @@ package driver
 
 /*
 #cgo LDFLAGS: -lcomedi -lm
-#include "c/io.h"
+#include "c_io.h"
 */
 import "C"
 import "fmt"
@@ -39,7 +39,7 @@ var buttonChannelMatrix = [numFloors][numButtons]int{
 	{btnUp1, btnDown1, btnCmd1},
 	{btnUp2, btnDown2, btnCmd2},
 	{btnUp3, btnDown3, btnCmd3},
-	{btnUp4, btnDown3, btnCmd4},
+	{btnUp4, btnDown4, btnCmd4},
 }
 
 const numButtons = 3
@@ -49,7 +49,7 @@ const numFloors = 4
 const (
 	port4    = 3
 	obstruct = (0x300 + 23)
-	stopLED  = (0x300 + 22)
+	stopBtn  = (0x300 + 22)
 	btnCmd1  = (0x300 + 21)
 	btnCmd2  = (0x300 + 20)
 	btnCmd3  = (0x300 + 19)
@@ -64,7 +64,7 @@ const (
 	btnDown2     = (0x200 + 0)
 	btnUp3       = (0x200 + 1)
 	btnDown3     = (0x200 + 2)
-	btnDown3     = (0x200 + 3)
+	btnDown4     = (0x200 + 3)
 	sensorFloor1 = (0x200 + 4)
 	sensorFloor2 = (0x200 + 5)
 	sensorFloor3 = (0x200 + 6)

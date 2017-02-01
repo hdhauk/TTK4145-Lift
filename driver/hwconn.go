@@ -104,5 +104,5 @@ func getObstructionSignal() bool {
 }
 
 func getStopSignal() bool {
-	return ioReadBit(stopLED)
+	return ioReadBit(stopBtn)
 }
