@@ -5,8 +5,8 @@
 // 2006, Martin Korsgaard <-- HEI Martin. Så gøy du stalker deg selv i repoen min:)
 
 
-#include "io.h"
-#include "channels.h"
+#include "c_io.h"
+#include "c_channels.h"
 
 #include <comedilib.h>
 
