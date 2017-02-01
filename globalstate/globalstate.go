@@ -21,8 +21,8 @@ import "time"
 
 // Init intializes the raft-node to be prepared to join a raft-cluster of size
 // given by nodes. It sets up all nessesary listeners.
-func Init(nodes int, onPromotion func(), onDemotion func()) {
-	// cfg := raft.DefaultConfig()
+func Init(c Config) {
+	//cfg := raft.DefaultConfig()
 
 }
 
