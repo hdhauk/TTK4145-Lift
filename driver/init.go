@@ -61,19 +61,18 @@ var cfg = Config{
 	SimPort: "53566",
 	Floors:  4,
 	OnFloorDetect: func(f int) {
-		cfg.Logger.Printf("onFloorDetect callback not set! Floor: %v\n", f)
+		fmt.Printf("onFloorDetect callback not set! Floor: %v\n", f)
 	},
 	OnNewDirection: func(dir string) {
-		cfg.Logger.Printf("onNewDirection callback not set! Dir: %v\n", dir)
+		fmt.Printf("onNewDirection callback not set! Dir: %v\n", dir)
 	},
 	OnBtnPress: func(b Btn) {
-		cfg.Logger.Printf("onBtnPress callback not set! Type: %v, Floor: %v\n", b.Type, b.Floor)
+		fmt.Printf("onBtnPress callback not set! Type: %v, Floor: %v\n", b.Type, b.Floor)
 	},
-	Logger: log.New(os.Stdout, "driver-default-debugger:", log.Lshortfile),
+	Logger: log.New(os.Stdout, "driver-default-debugger:", log.Lshortfile|log.Ltime),
 }
 
-// Config defines the properties of the elevator and callbacks to the following
-// events:
+// Config defines the properties of the elevator and callbacks to the following events
 //  * OnFloorDetect - The elevator just reached a floor. May or may not stop there.
 //  * OnNewDirection - The elevator either stopped or started moving in either direction.
 //  * OnBtnPress - A button have been depressed.

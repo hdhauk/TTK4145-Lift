@@ -2,6 +2,11 @@ package driver
 
 import "time"
 
+const (
+	red   = "\x1b[31;1m"
+	white = "\x1b[0m"
+)
+
 func autoPilot(apFloorCh <-chan int) {
 	// lastFloor := 0
 	// dstFloor := 0
@@ -48,15 +53,16 @@ func autoPilot(apFloorCh <-chan int) {
 			if f == dstFloor {
 				driver.setMotorDir(stop)
 				setCurrentDir(stop)
-				openDoor()
+				//openDoor()
 				break selector
 			}
 
 			// Case 2
-			if dirToDst(lastFloor, dstFloor) != currentDir {
-				cfg.Logger.Printf("autopilot.go: Something unexpected have happend. Somehow ended up in a wrong direction. Turning around")
-				driver.setMotorDir(dirToDst(lastFloor, dstFloor))
-				setCurrentDir(dirToDst(lastFloor, dstFloor))
+			if dirToDst(f, dstFloor) != currentDir {
+				newDir := dirToDst(lastFloor, dstFloor)
+				cfg.Logger.Printf(red+"Unexpected direction value. Correcting to: %s"+white, newDir)
+				driver.setMotorDir(newDir)
+				setCurrentDir(newDir)
 			}
 
 		// New destination given
@@ -74,18 +80,28 @@ func autoPilot(apFloorCh <-chan int) {
 				switch currentDir {
 				// Case 1
 				case stop:
-					cfg.Logger.Printf("autopilot.go: New destination given (%v). Case 1\n", dst)
-					openDoor()
+					cfg.Logger.Printf("autopilot.go: New destination given (%v). Case 1: Stopping...\n", dst)
+					//openDoor()
 					break selector
 				// Case 2a
 				case up:
-					cfg.Logger.Printf("autopilot.go: New destination given (%v). Case 2a\n", dst)
+					cfg.Logger.Printf("autopilot.go: New destination given (%v). Case 2a: Going down...\n", dst)
+					// NOTE: The timer make sure that the elevator have actually left
+					// the sensor. Otherwise it will not trigger the floor sensor,
+					// and in rare cases will end up going beyond the area of operation.
+					time.Sleep(200 * time.Millisecond)
+
 					driver.setMotorDir(down)
 					setCurrentDir(down)
 					break selector
 				// Case 2b
 				case down:
-					cfg.Logger.Printf("autopilot.go: New destination given (%v). Case 2b\n", dst)
+					cfg.Logger.Printf("autopilot.go: New destination given (%v). Case 2b: Going up...\n", dst)
+					// NOTE: The timer make sure that the elevator have actually left
+					// the sensor. Otherwise it will not trigger the floor sensor,
+					// and in rare cases will end up going beyond the area of operation.
+					time.Sleep(200 * time.Millisecond)
+
 					driver.setMotorDir(up)
 					setCurrentDir(up)
 					break selector

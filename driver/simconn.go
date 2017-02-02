@@ -22,7 +22,7 @@ func initSim(simPort string) {
 	connStr := fmt.Sprintf("localhost:%s", simPort)
 	conn, err := net.Dial("tcp", connStr)
 	if err != nil {
-		cfg.Logger.Fataln("Failed to connect to simulator. Make sure it it running and try again.")
+		cfg.Logger.Fatalln("Failed to connect to simulator. Make sure it it running and try again.")
 	}
 	defer conn.Close()
 

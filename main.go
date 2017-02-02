@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	"bitbucket.org/halvor_haukvik/ttk4145-elevator/driver"
 	"bitbucket.org/halvor_haukvik/ttk4145-elevator/peerdiscovery"
 )
 
@@ -40,15 +41,35 @@ func main() {
 		fmt.Printf("IP = %v\n", IP)
 	})
 
-	//go driver.Init(true, simPort)
-
-	for {
-		select {
-		case <-time.After(1 * time.Second):
-			//logPeerUpdate(p)
-
-		}
+	cfg := driver.Config{
+		SimMode: true,
+		SimPort: "53566",
+		Floors:  4,
+		OnBtnPress: func(b driver.Btn) {
+			driver.BtnLEDSet(b)
+			time.Sleep(5 * time.Second)
+			driver.BtnLEDClear(b)
+		},
 	}
+	fmt.Println("initializing")
+	go driver.Init(cfg)
+	time.Sleep(4 * time.Second)
+
+	var i int
+	for {
+		fmt.Printf("Go to floor: \n")
+		fmt.Scanf("%d", &i)
+		fmt.Printf("Goint to: %v\n", i)
+		driver.GoToFloor(i)
+	}
+
+	// for {
+	// 	select {
+	// 	case <-time.After(1 * time.Second):
+	// 		//logPeerUpdate(p)
+	//
+	// 	}
+	// }
 }
 
 func peerName(id string) string {
