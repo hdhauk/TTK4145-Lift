@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/raft"
-	raftboltdb "github.com/hashicorp/raft-boltdb"
+	"github.com/hashicorp/raft-boltdb"
 )
 
 const (
@@ -20,61 +20,53 @@ const (
 	raftTimeout         = 10 * time.Second
 )
 
-var globalRaft raft.Raft
-
 type command struct {
 	Op    string `json:"op,omitempty"`
 	Key   string `json:"key,omitempty"`
 	Value string `json:"value,omitempty"`
 }
 
-// Config defines what
-type Config struct {
-	ClusterSize int
-	OnPromotion func()
-	OnDemotion  func()
-}
-
-type store struct {
+// Store is a simple key-value store, where all changes are made via Raft consensus.
+type Store struct {
 	RaftDir  string
-	RaftPort string
+	RaftBind string
 
 	mu sync.Mutex
-	// FIXME
-	m map[string]string // The actual store
+	m  map[string]string // The key-value store for the system.
 
-	raft *raft.Raft
+	raft *raft.Raft // The consensus mechanism
 
 	logger *log.Logger
 }
 
-// Creates a new store
-func new() *store {
-	return &store{
-		// FIXME
+// New returns a new Store.
+func New() *Store {
+	return &Store{
 		m:      make(map[string]string),
 		logger: log.New(os.Stderr, "[store] ", log.LstdFlags),
 	}
 }
 
-func (s *store) Open(enableSingle bool) error {
-	// Setup Raft configuration
-	cfg := raft.DefaultConfig()
+// Open opens the store. If enableSingle is set, and there are no existing peers,
+// then this node becomes the first node, and therefore leader, of the cluster.
+func (s *Store) Open(enableSingle bool) error {
+	// Setup Raft configuration.
+	config := raft.DefaultConfig()
 
-	// Setup Raft Communication
-	addr, err := net.ResolveTCPAddr("tcp", s.RaftPort)
+	// Setup Raft communication.
+	addr, err := net.ResolveTCPAddr("tcp", s.RaftBind)
 	if err != nil {
 		return err
 	}
-	transport, err := raft.NewTCPTransport(s.RaftPort, addr, 2, 10*time.Second, os.Stderr)
+	transport, err := raft.NewTCPTransport(s.RaftBind, addr, 3, 10*time.Second, os.Stderr)
 	if err != nil {
 		return err
 	}
 
-	// Create peer storage
+	// Create peer storage.
 	peerStore := raft.NewJSONPeers(s.RaftDir, transport)
 
-	// Check for any existing peerStore
+	// Check for any existing peers.
 	peers, err := peerStore.Peers()
 	if err != nil {
 		return err
@@ -84,14 +76,14 @@ func (s *store) Open(enableSingle bool) error {
 	// explicitly enabled and there is only 1 node in the cluster already.
 	if enableSingle && len(peers) <= 1 {
 		s.logger.Println("enabling single-node mode")
-		cfg.EnableSingleNode = true
-		cfg.DisableBootstrapAfterElect = false
+		config.EnableSingleNode = true
+		config.DisableBootstrapAfterElect = false
 	}
 
 	// Create the snapshot store. This allows the Raft to truncate the log.
 	snapshots, err := raft.NewFileSnapshotStore(s.RaftDir, retainSnapshotCount, os.Stderr)
 	if err != nil {
-		return fmt.Errorf("file snapshot stroe %s", err)
+		return fmt.Errorf("file snapshot store: %s", err)
 	}
 
 	// Create the log store and stable store.
@@ -100,23 +92,24 @@ func (s *store) Open(enableSingle bool) error {
 		return fmt.Errorf("new bolt store: %s", err)
 	}
 
-	// Instantiate the Raft systems
-	ra, err := raft.NewRaft(cfg, (*fsm)(s), logStore, logStore, snapshots, peerStore, transport)
+	// Instantiate the Raft systems.
+	ra, err := raft.NewRaft(config, (*fsm)(s), logStore, logStore, snapshots, peerStore, transport)
 	if err != nil {
 		return fmt.Errorf("new raft: %s", err)
 	}
 	s.raft = ra
-
 	return nil
 }
 
-func (s *store) Get(key string) (string, error) {
+// Get returns the value for the given key.
+func (s *Store) Get(key string) (string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.m[key], nil
 }
 
-func (s *store) Set(key, value string) error {
+// Set sets the value for the given key.
+func (s *Store) Set(key, value string) error {
 	if s.raft.State() != raft.Leader {
 		return fmt.Errorf("not leader")
 	}
@@ -130,12 +123,13 @@ func (s *store) Set(key, value string) error {
 	if err != nil {
 		return err
 	}
+
 	f := s.raft.Apply(b, raftTimeout)
 	return f.Error()
 }
 
-// NOTE: probably not useful...
-func (s *store) Delete(key string) error {
+// Delete deletes the given key.
+func (s *Store) Delete(key string) error {
 	if s.raft.State() != raft.Leader {
 		return fmt.Errorf("not leader")
 	}
@@ -144,7 +138,6 @@ func (s *store) Delete(key string) error {
 		Op:  "delete",
 		Key: key,
 	}
-
 	b, err := json.Marshal(c)
 	if err != nil {
 		return err
@@ -154,10 +147,17 @@ func (s *store) Delete(key string) error {
 	return f.Error()
 }
 
+// Snapshot dumps a copy of the current store.
+func (s *Store) Snapshot() (map[string]string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.m, nil
+}
+
 // Join joins a node, located at addr, to this store. The node must be ready to
 // respond to Raft communications at that address.
-func (s *store) Join(addr string) error {
-	s.logger.Printf("recieved join request for remote node at %s", addr)
+func (s *Store) Join(addr string) error {
+	s.logger.Printf("received join request for remote node as %s", addr)
 
 	f := s.raft.AddPeer(addr)
 	if f.Error() != nil {
@@ -167,13 +167,12 @@ func (s *store) Join(addr string) error {
 	return nil
 }
 
-type fsm store
+type fsm Store
 
-// apply applies a Raft log entry to the key-value store.
+// Apply applies a Raft log entry to the key-value store.
 func (f *fsm) Apply(l *raft.Log) interface{} {
 	var c command
 	if err := json.Unmarshal(l.Data, &c); err != nil {
-		// FIXME: Seems excessive to panic here...
 		panic(fmt.Sprintf("failed to unmarshal command: %s", err.Error()))
 	}
 
@@ -183,19 +182,16 @@ func (f *fsm) Apply(l *raft.Log) interface{} {
 	case "delete":
 		return f.applyDelete(c.Key)
 	default:
-		// FIXME: Seems excessive to panic here...
 		panic(fmt.Sprintf("unrecognized command op: %s", c.Op))
 	}
 }
 
-// snapshot returns a snapshot of the key-value store
-// TODO: No way this can return an error
+// Snapshot returns a snapshot of the key-value store.
 func (f *fsm) Snapshot() (raft.FSMSnapshot, error) {
 	f.mu.Lock()
-	defer f.mu.Lock()
+	defer f.mu.Unlock()
 
 	// Clone the map.
-	// FIXME
 	o := make(map[string]string)
 	for k, v := range f.m {
 		o[k] = v
@@ -203,28 +199,26 @@ func (f *fsm) Snapshot() (raft.FSMSnapshot, error) {
 	return &fsmSnapshot{store: o}, nil
 }
 
-// restore roll the key-value store back to a previous state.
+// Restore stores the key-value store to a previous state.
 func (f *fsm) Restore(rc io.ReadCloser) error {
-	// FIXME
 	o := make(map[string]string)
 	if err := json.NewDecoder(rc).Decode(&o); err != nil {
 		return err
 	}
 
-	// Set the state from the snapshot, no lock required accoring to Hashicorp docs...
+	// Set the state from the snapshot, no lock required according to
+	// Hashicorp docs.
 	f.m = o
 	return nil
 }
 
-// TODO: why the return value?
 func (f *fsm) applySet(key, value string) interface{} {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	delete(f.m, key)
+	f.m[key] = value
 	return nil
 }
 
-// TODO: Why the return value?
 func (f *fsm) applyDelete(key string) interface{} {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -233,13 +227,12 @@ func (f *fsm) applyDelete(key string) interface{} {
 }
 
 type fsmSnapshot struct {
-	// FIXME
 	store map[string]string
 }
 
 func (f *fsmSnapshot) Persist(sink raft.SnapshotSink) error {
 	err := func() error {
-		// Encode Data
+		// Encode data.
 		b, err := json.Marshal(f.store)
 		if err != nil {
 			return err
@@ -254,6 +247,7 @@ func (f *fsmSnapshot) Persist(sink raft.SnapshotSink) error {
 		if err := sink.Close(); err != nil {
 			return err
 		}
+
 		return nil
 	}()
 
@@ -261,6 +255,7 @@ func (f *fsmSnapshot) Persist(sink raft.SnapshotSink) error {
 		sink.Cancel()
 		return err
 	}
+
 	return nil
 }
 

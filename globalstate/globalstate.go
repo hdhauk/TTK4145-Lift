@@ -17,25 +17,26 @@ TL;DR:
 */
 package globalstate
 
-import "time"
-
-// Init intializes the raft-node to be prepared to join a raft-cluster of size
-// given by nodes. It sets up all nessesary listeners.
-func Init(c Config) {
-	//cfg := raft.DefaultConfig()
-
-}
+import (
+	"fmt"
+	"time"
+)
 
 // Add emits the given Update to the current cluster leader. It will
 // return an error of the leader is unreachable, or if it fail to recieve an
 //acknowledgement that the Update is committed to the cluster.
-func Add(u Update) error {
+func Add() error {
+	fmt.Println("Attempting to add a key-value pair...")
+	if err := gstore.Set("testKey", "testValue"); err != nil {
+		return err
+	}
 	return nil
 }
 
 // GetState returns a copy of the current cluster state.
-func GetState() State {
-	return State{}
+func GetState() interface{} {
+	//return gstore.Snapshot()
+	return nil
 }
 
 // Update defines all messages that may be sendt to the cluster.
