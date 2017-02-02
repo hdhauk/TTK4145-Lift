@@ -17,19 +17,16 @@ TL;DR:
 */
 package globalstate
 
-import (
-	"fmt"
-	"time"
-)
+import "time"
 
 // Add emits the given Update to the current cluster leader. It will
 // return an error of the leader is unreachable, or if it fail to recieve an
 //acknowledgement that the Update is committed to the cluster.
 func Add() error {
-	fmt.Println("Attempting to add a key-value pair...")
-	if err := gstore.Set("testKey", "testValue"); err != nil {
-		return err
-	}
+	// fmt.Println("Attempting to add a key-value pair...")
+	// if err := gstore.Set("testKey", "testValue"); err != nil {
+	// 	return err
+	// }
 	return nil
 }
 

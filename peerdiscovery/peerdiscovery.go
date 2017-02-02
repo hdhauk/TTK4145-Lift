@@ -11,30 +11,32 @@ import (
 	"time"
 )
 
-// PeerUpdate contain a summary of changes in the list of known peers. All
-// current peers are listed in Peers, while any new or lost peers are listed
-// in New or Lost respectivly. Multiple lost peers usually indicate some sort of
-// network failure.
-type PeerUpdate struct {
-	Peers []string
-	New   string
-	Lost  []string
-}
-
-type peer struct {
-	ip        string
-	name      string
+// Peer defines a peer
+type Peer struct {
+	IP        string
+	Nick      string
+	JoinPort  string
+	RaftPort  string
 	firstSeen time.Time
 	lastSeen  time.Time
+}
+
+// Copy returns a copy of the peer
+func (p *Peer) Copy() Peer {
+	new := Peer{
+		IP:       p.IP,
+		Nick:     p.Nick,
+		JoinPort: p.JoinPort,
+		RaftPort: p.RaftPort,
+	}
+	return new
 }
 
 const interval = 15 * time.Millisecond
 const timeout = 50 * time.Millisecond
 
-// broadcastHeartBeats broadcast the supplied id every 15ms or whenever recieving
-// a value on the transmitEnable channel.
+// broadcastHeartBeats broadcast the supplied id every 15ms
 func broadcastHeartBeats(port int, id string) {
-
 	conn := dialBroadcastUDP(port)
 	addr, _ := net.ResolveUDPAddr("udp4", fmt.Sprintf("255.255.255.255:%d", port))
 
@@ -50,12 +52,12 @@ func broadcastHeartBeats(port int, id string) {
 // to others. The `id`-field in the callbacks have the form:
 //	peerName@xxx.xxx.xxx.xxx
 // where the latter part is the IPv4 adress of the peer.
-func Start(port int, ownID string, onNewPeer func(id, ip string)) {
+func Start(port int, ownID, joinPort, raftPort string, onNewPeer func(peer Peer)) {
 	var buf [1024]byte
-	peers := make(map[string]*peer)
+	peers := make(map[string]*Peer)
 	conn := dialBroadcastUDP(port)
 
-	go broadcastHeartBeats(port, ownID)
+	go broadcastHeartBeats(port, fmt.Sprintf("%s@%s@%s", ownID, joinPort, raftPort))
 
 	for {
 		conn.SetReadDeadline(time.Now().Add(interval))
@@ -78,13 +80,15 @@ func Start(port int, ownID string, onNewPeer func(id, ip string)) {
 			if _, idExists := peers[id]; !idExists {
 				// Previusly unknown host
 				s := strings.Split(id, "@")
-				peers[id] = &peer{
-					ip:        s[1],
-					name:      s[0],
+				peers[id] = &Peer{
+					IP:        s[1],
+					Nick:      s[0],
+					JoinPort:  s[2],
+					RaftPort:  s[3],
 					firstSeen: time.Now(),
 					lastSeen:  time.Now(),
 				}
-				onNewPeer(s[0], s[1])
+				onNewPeer(peers[id].Copy())
 			}
 			peers[id].lastSeen = time.Now()
 		}

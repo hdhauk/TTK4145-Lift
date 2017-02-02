@@ -39,8 +39,8 @@ type Store struct {
 	logger *log.Logger
 }
 
-// New returns a new Store.
-func New() *Store {
+// NewStore returns a new Store.
+func NewStore() *Store {
 	return &Store{
 		m:      make(map[string]string),
 		logger: log.New(os.Stderr, "[store] ", log.LstdFlags),
@@ -161,6 +161,7 @@ func (s *Store) Join(addr string) error {
 
 	f := s.raft.AddPeer(addr)
 	if f.Error() != nil {
+		s.logger.Println(f.Error())
 		return f.Error()
 	}
 	s.logger.Printf("node at %s joined successfully", addr)
