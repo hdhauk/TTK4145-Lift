@@ -50,7 +50,7 @@ func broadcastHeartBeats(port int, id string) {
 // to others. The `id`-field in the callbacks have the form:
 //	peerName@xxx.xxx.xxx.xxx
 // where the latter part is the IPv4 adress of the peer.
-func Start(port int, ownID string, onNewPeer func(id, IP string)) {
+func Start(port int, ownID string, onNewPeer func(id, ip string)) {
 	var buf [1024]byte
 	peers := make(map[string]*peer)
 	conn := dialBroadcastUDP(port)
@@ -62,13 +62,16 @@ func Start(port int, ownID string, onNewPeer func(id, IP string)) {
 
 		// Although it is considered BAD go-code to throw away the error as we do
 		// here the ReadFrom function will constantly yield non-nil error value
-		// whenever nothing is read. Therefore we insted check to see if the string
+		// whenever nothing is read. Therefore we instead check to see if the string
 		// n is empty further down.
 		n, _, _ := conn.ReadFrom(buf[0:])
 
 		id := string(buf[:n]) // Either "" or on the form: "peerName@xxx.xxx.xxx.xxx"
 
-		// TODO: Stop function from triggering on own heartbeats
+		// Stop function from triggering on own heartbeats
+		if strings.Contains(id, ownID) {
+			continue
+		}
 
 		// Adding new connection
 		if id != "" {
@@ -85,28 +88,5 @@ func Start(port int, ownID string, onNewPeer func(id, IP string)) {
 			}
 			peers[id].lastSeen = time.Now()
 		}
-
-		// Removing dead connection
-		// p.Lost = make([]string, 0)
-		// for k, v := range lastSeen {
-		// 	if time.Now().Sub(v) > timeout {
-		// 		updated = true
-		// 		p.Lost = append(p.Lost, k)
-		// 		delete(lastSeen, k)
-		// 	}
-		// }
-
-		// Sending update
-		// if updated {
-		// 	p.Peers = make([]string, 0, len(lastSeen))
-		//
-		// 	for k := range lastSeen {
-		// 		p.Peers = append(p.Peers, k)
-		// 	}
-		//
-		// 	sort.Strings(p.Peers)
-		// 	sort.Strings(p.Lost)
-		// 	peerUpdateCh <- p
-		// }
 	}
 }
