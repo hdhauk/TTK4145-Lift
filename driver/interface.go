@@ -1,11 +1,8 @@
 /*
 Package driver provides control of both simulated and actual elevators.
 The package also usure that the floor-indicator always show the correct floor,
-and that the carrige always have a closed door unless stationary at a floor.
-*/
+and that the carrige always have a closed door unless stationary at a floor.*/
 package driver
-
-import "fmt"
 
 // GoToFloor sends the elevator carrige to the desired floor and stop there,
 // unless it is stopped before arriving at its destination.
@@ -13,7 +10,7 @@ import "fmt"
 // haven't reached its destination.
 func GoToFloor(floor int) {
 	if floor > cfg.Floors-1 || floor < 0 {
-		fmt.Println("How about going to a floor that actually exists, hu! ...smartass...")
+		cfg.Logger.Printf("invalid floor requested: %v\n", floor)
 		return
 	}
 	if floor >= 0 {
@@ -43,6 +40,7 @@ func BtnLEDSet(b Btn) {
 // correct integer, the types are available as constants.
 type BtnType int
 
+// Button type constants
 const (
 	// HallUp is located outside of the elevator
 	HallUp BtnType = iota
@@ -50,7 +48,10 @@ const (
 	HallDown
 	// Cab is located inside of the elevator
 	Cab
+)
 
+// Motor direction constants
+const (
 	stop = "STOP"
 	up   = "UP"
 	down = "DOWN"

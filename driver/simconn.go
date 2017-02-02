@@ -3,7 +3,6 @@ package driver
 import (
 	"fmt"
 	"net"
-	"os"
 )
 
 var simPort string
@@ -17,14 +16,13 @@ var closeSimConn = make(chan bool)
 func initSim(simPort string) {
 
 	if err := validatePort(simPort); err != nil {
-		os.Exit(1)
+		cfg.Logger.Fatalf("unable to validate simulator port. Please check your config and try again\n")
 	}
 
 	connStr := fmt.Sprintf("localhost:%s", simPort)
 	conn, err := net.Dial("tcp", connStr)
 	if err != nil {
-		fmt.Println("Failed to connect to simulator. Make sure it it running and try again.")
-		os.Exit(1)
+		cfg.Logger.Fataln("Failed to connect to simulator. Make sure it it running and try again.")
 	}
 	defer conn.Close()
 

@@ -1,21 +1,14 @@
 package driver
 
-import (
-	"fmt"
-	"log"
-	"os"
-)
-
 // Elevator functions
 //==============================================================================
 func initHW(port string) {
 	// Initalize connection to elevator
 	if ioInit() != nil {
-		fmt.Println("Failed to connect to the elvator. Make sure everything is turned on!")
-		os.Exit(1)
+		cfg.Logger.Fatalln("Failed to connect to the elvator. Make sure everything is turned on and try again!")
 	}
 	close(initDone)
-
+	cfg.Logger.Println("hardware initalization complete")
 }
 
 func setMotorDirHW(dir string) {
@@ -44,7 +37,7 @@ func setBtnLEDHW(btn Btn, active bool) {
 func setFloorLEDHW(floor int) {
 	// Check input validity
 	if floor < 0 || floor >= numFloors {
-		log.Printf("hwconn.go/setFloorLEDHW(): Error: Floor %d out of range! No floor indicator will be set.\n", floor)
+		cfg.Logger.Printf("Error: Floor %d out of range! No floor indicator will be set.\n", floor)
 	}
 
 	// Binary encoding. One light must always be on.

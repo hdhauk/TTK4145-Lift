@@ -7,13 +7,13 @@
 * Go 1.7.4
 * DMD 2.073.0 (only for using the simulator)
 
-Only test on these versions, but will likely work unless you have any ancient versions
+Only tested on these versions, but will likely work unless you have any ancient versions
 
 Not tested on Windows, but the comedi driver will likely be hard to get working.
 The simulator does not work properly in MacOS.
 
 ### Prerequisites
-* Make sure your Go enviroment is set up correctly:
+* Make sure your Go enviroment is correctly set up:
 
   The location of the project should look something like this:
 ~~~~
@@ -66,7 +66,7 @@ The following options are available
 
 |Argument  |Additional variable    | Description|
 |------|------------|------------|
-|`-nick` | `<nickname>` | Option to give the elevator a specific id. If omitted it it will use the process id|
+|`-nick` | `<nickname>` | Option to give the elevator a specific id. If omitted it will use the process id|
 |`-sim` | `<port>` | When set the controller will start in simulator mode an will attempt to connect to a simulator on the provided port (running on localhost) |
 
 Example: `./ttk4145-elevator -nick MyElevator -sim 53566`

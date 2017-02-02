@@ -1,9 +1,6 @@
 package driver
 
-import (
-	"fmt"
-	"time"
-)
+import "time"
 
 func autoPilot(apFloorCh <-chan int) {
 	// lastFloor := 0
@@ -29,8 +26,9 @@ func autoPilot(apFloorCh <-chan int) {
 		currentDir = stop
 		dstFloor = lastFloor
 	}
+	cfg.Logger.Printf("autopilot started with elevator stationary in floor: %v\n", lastFloor)
 
-	fmt.Printf("autopilot.go: Entering for-loop with [lastfloor:%v dstFloor:%v]\n", lastFloor, dstFloor)
+	// Start autopilot service
 	for {
 	selector:
 		select {
@@ -44,7 +42,7 @@ func autoPilot(apFloorCh <-chan int) {
 						-> Make sure the target destination is floorDstChin the direction of travel
 						-> If everything is OK carry on
 			*/
-			fmt.Printf("autopilot.go: At floor: %v\t dstFloor: %v\n", f, dstFloor)
+			cfg.Logger.Printf("autopilot.go: At floor: %v\t dstFloor: %v\n", f, dstFloor)
 
 			// Case 1
 			if f == dstFloor {
@@ -56,7 +54,7 @@ func autoPilot(apFloorCh <-chan int) {
 
 			// Case 2
 			if dirToDst(lastFloor, dstFloor) != currentDir {
-				fmt.Printf("autopilot.go: Something unexpected have happend. Somehow ended up in a wrong direction. Turning around")
+				cfg.Logger.Printf("autopilot.go: Something unexpected have happend. Somehow ended up in a wrong direction. Turning around")
 				driver.setMotorDir(dirToDst(lastFloor, dstFloor))
 				setCurrentDir(dirToDst(lastFloor, dstFloor))
 			}
@@ -76,18 +74,18 @@ func autoPilot(apFloorCh <-chan int) {
 				switch currentDir {
 				// Case 1
 				case stop:
-					fmt.Printf("autopilot.go: New destination given (%v). Case 1\n", dst)
+					cfg.Logger.Printf("autopilot.go: New destination given (%v). Case 1\n", dst)
 					openDoor()
 					break selector
 				// Case 2a
 				case up:
-					fmt.Printf("autopilot.go: New destination given (%v). Case 2a\n", dst)
+					cfg.Logger.Printf("autopilot.go: New destination given (%v). Case 2a\n", dst)
 					driver.setMotorDir(down)
 					setCurrentDir(down)
 					break selector
 				// Case 2b
 				case down:
-					fmt.Printf("autopilot.go: New destination given (%v). Case 2b\n", dst)
+					cfg.Logger.Printf("autopilot.go: New destination given (%v). Case 2b\n", dst)
 					driver.setMotorDir(up)
 					setCurrentDir(up)
 					break selector
@@ -95,7 +93,7 @@ func autoPilot(apFloorCh <-chan int) {
 			}
 
 			// Case 3
-			fmt.Printf("autopilot.go: New destination given (%v). Case 3\n", dst)
+			cfg.Logger.Printf("autopilot.go: New destination given (%v). Case 3\n", dst)
 			d2d := dirToDst(lastFloor, dst)
 			driver.setMotorDir(d2d)
 			setCurrentDir(d2d)
@@ -114,7 +112,9 @@ func dirToDst(lastFloor, dst int) string {
 }
 
 func openDoor() {
+	cfg.Logger.Println("Opening door...")
 	driver.setDoorLED(true)
 	time.Sleep(3 * time.Second)
+	cfg.Logger.Println("Closing door...")
 	driver.setDoorLED(false)
 }

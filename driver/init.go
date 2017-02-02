@@ -2,6 +2,8 @@ package driver
 
 import (
 	"fmt"
+	"log"
+	"os"
 	"strconv"
 )
 
@@ -17,7 +19,7 @@ var apFloorCh chan int
 func Init(c Config) error {
 	// Set configuration
 	if err := setConfig(c); err != nil {
-		fmt.Printf("Failed to set driver configuration: %v", err)
+		cfg.Logger.Printf("Failed to set driver configuration: %v", err)
 		return err
 	}
 
@@ -59,14 +61,15 @@ var cfg = Config{
 	SimPort: "53566",
 	Floors:  4,
 	OnFloorDetect: func(f int) {
-		fmt.Printf("onFloorDetect callback not set! Floor: %v\n", f)
+		cfg.Logger.Printf("onFloorDetect callback not set! Floor: %v\n", f)
 	},
 	OnNewDirection: func(dir string) {
-		fmt.Printf("onNewDirection callback not set! Dir: %v\n", dir)
+		cfg.Logger.Printf("onNewDirection callback not set! Dir: %v\n", dir)
 	},
 	OnBtnPress: func(b Btn) {
-		fmt.Printf("onBtnPress callback not set! Type: %v, Floor: %v\n", b.Type, b.Floor)
+		cfg.Logger.Printf("onBtnPress callback not set! Type: %v, Floor: %v\n", b.Type, b.Floor)
 	},
+	Logger: log.New(os.Stdout, "driver-default-debugger:", log.Lshortfile),
 }
 
 // Config defines the properties of the elevator and callbacks to the following
@@ -81,6 +84,7 @@ type Config struct {
 	OnFloorDetect  func(floor int)
 	OnNewDirection func(direction string)
 	OnBtnPress     func(b Btn)
+	Logger         *log.Logger
 }
 
 var driver = struct {
@@ -109,6 +113,7 @@ func setConfig(c Config) error {
 		}
 	}
 	if c.Floors < 0 {
+		cfg.Logger.Printf("negative nu,ber of floos, (%v) not supported\n", c.Floors)
 		return fmt.Errorf("negative number of floors (%v) not supported", c.Floors)
 	}
 
@@ -128,9 +133,11 @@ func setConfig(c Config) error {
 func validatePort(port string) error {
 	i, err := strconv.Atoi(port)
 	if err != nil {
+		cfg.Logger.Printf("port validation failed. Unable to parse the portnumber: %v\n", port)
 		return err
 	}
 	if i < 1024 || i > 65535 {
+		cfg.Logger.Printf("port %d not in valid range range (1024-65553)\n", i)
 		return fmt.Errorf("port %d not in valid range range (1024-65553)", i)
 	}
 	return nil
