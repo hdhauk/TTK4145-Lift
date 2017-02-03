@@ -40,6 +40,13 @@ To download all necessary dependencies open a terminal window in the project fol
 cd $GOPATH/src/bitbucket.org/halvor_haukvik/ttk4145-elevator
 go get -t ./..
 ~~~~
+or install them independently
+~~~~
+go get github.com/hashicorp/raft
+go get github.com/hashicorp/raft-boltdb
+go get github.com/satori/go.uuid
+~~~~
+
 
 ### 3. Install testing tools (Optional)
 ~~~~
