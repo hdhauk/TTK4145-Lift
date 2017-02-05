@@ -20,12 +20,6 @@ const (
 	raftTimeout         = 10 * time.Second
 )
 
-type command struct {
-	Op    string `json:"op,omitempty"`
-	Key   string `json:"key,omitempty"`
-	Value string `json:"value,omitempty"`
-}
-
 // Store is a simple key-value store, where all changes are made via Raft consensus.
 type Store struct {
 	RaftDir  string
@@ -161,11 +155,50 @@ func (s *Store) Join(addr string) error {
 
 	f := s.raft.AddPeer(addr)
 	if f.Error() != nil {
+		s.logger.Println("Failed to add peer")
 		s.logger.Println(f.Error())
 		return f.Error()
 	}
-	s.logger.Printf("node at %s joined successfully", addr)
+	s.logger.Printf("peer at %s joined successfully", addr)
 	return nil
+}
+
+// GetLeader returns the address of the current raft-leader
+func (s *Store) GetLeader() string {
+	l := s.raft.Leader()
+	return l
+}
+
+// RemovePeer remove a peer from the global store. If not currently leader then
+// it will do nothing
+func (s *Store) RemovePeer(addr string) error {
+	if s.raft.State() != raft.Leader {
+		e := fmt.Errorf("unable to kick peer: Not currently the leader")
+		s.logger.Println(e.Error())
+		return e
+	}
+	f := s.raft.RemovePeer(addr)
+	if f.Error() != nil {
+		s.logger.Println("Failed to remove peer")
+		s.logger.Println(f.Error())
+		return f.Error()
+	}
+	s.logger.Printf("peer at %s removed successfully", addr)
+	return nil
+}
+
+// GetStatus returns the raft-status
+func (s *Store) GetStatus() uint32 {
+	return uint32(s.raft.State())
+}
+
+// Private stuff
+//==============================================================================
+
+type command struct {
+	Op    string `json:"op,omitempty"`
+	Key   string `json:"key,omitempty"`
+	Value string `json:"value,omitempty"`
 }
 
 type fsm Store
