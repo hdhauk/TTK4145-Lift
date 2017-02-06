@@ -133,11 +133,12 @@ type command struct {
 func (f *fsm) applyUpdateFloor(floor interface{}) interface{} {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	floorInt, ok := floor.(uint)
-	if !ok {
-		f.logger.Printf("[ERROR] Unable to apply floorUpdate. Bad floor: %v\n", floor)
-		return nil
-	}
+	floorInt, _ := floor.(uint)
+	// TODO: Implement test for the floorInt
+	// if !ok {
+	// 	f.logger.Printf("[ERROR] Unable to apply floorUpdate. Bad floor: %v\n", floor)
+	// 	return nil
+	// }
 	f.state.Floors = floorInt
 	return nil
 }
@@ -145,11 +146,11 @@ func (f *fsm) applyUpdateFloor(floor interface{}) interface{} {
 func (f *fsm) applyNodeUpdate(nodeID string, e interface{}) interface{} {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	elev, ok := e.(Elevator)
-	if !ok {
-		f.logger.Printf("[ERROR] Unable to apply nodeUpdate. Bad node: nodeID=%v , Elevator=%v", nodeID, e)
-		return nil
-	}
+	elev, _ := e.(Elevator)
+	// if !ok {
+	// 	f.logger.Printf("[ERROR] Unable to apply nodeUpdate. Bad node: nodeID=%v , Elevator=%v", nodeID, e)
+	// 	return nil
+	// }
 	f.state.Nodes[nodeID] = elev.DeepCopy()
 	return nil
 }
@@ -157,11 +158,11 @@ func (f *fsm) applyNodeUpdate(nodeID string, e interface{}) interface{} {
 func (f *fsm) applyBtnUpUpdate(floor string, s interface{}) interface{} {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	btnStatus, ok := s.(Status)
-	if !ok {
-		f.logger.Printf("[ERROR] Unable to apply btnUpUpdate. Bad status object: floor=%s , status=%v", floor, s)
-		return nil
-	}
+	btnStatus, _ := s.(Status)
+	// if !ok {
+	// 	f.logger.Printf("[ERROR] Unable to apply btnUpUpdate. Bad status object: floor=%s , status=%v", floor, s)
+	// 	return nil
+	// }
 	f.state.HallUpButtons[floor] = btnStatus.DeepCopy()
 	return nil
 }
@@ -169,11 +170,11 @@ func (f *fsm) applyBtnUpUpdate(floor string, s interface{}) interface{} {
 func (f *fsm) appyBtnDownUpdate(floor string, s interface{}) interface{} {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	btnStatus, ok := s.(Status)
-	if !ok {
-		f.logger.Printf("[ERROR] Unable to apply btnDownUpdate. Bad status object: floor=%s , status=%v", floor, s)
-		return nil
-	}
+	btnStatus, _ := s.(Status)
+	// if !ok {
+	// 	f.logger.Printf("[ERROR] Unable to apply btnDownUpdate. Bad status object: floor=%s , status=%v", floor, s)
+	// 	return nil
+	// }
 	f.state.HallDownButton[floor] = btnStatus.DeepCopy()
 	return nil
 }
@@ -226,4 +227,10 @@ func (f *fsm) Join(addr string) error {
 	}
 	f.logger.Printf("[INFO] Successfully joined node %s to the raft.\n", addr)
 	return nil
+}
+
+func (f *fsm) GetState() State {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.state.DeepCopy()
 }
