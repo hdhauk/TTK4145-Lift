@@ -8,48 +8,59 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 )
 
-var leaderCh chan bool
+// Init TODO: description
+func Init(cfg Config) error {
+	// Parse port
+	rPort := cfg.RaftPort
+	rPortStr := strconv.Itoa(rPort)
+	cPort := rPort + 1
+	cPortStr := strconv.Itoa(cPort)
 
-// Init starts the whole shebang!
-func Init(anyPeer, joinPort, raftPort, ownIP string) {
+	// Set up FSM
+	theFSM := newFSM(rPortStr)
 
-	// Set up the raft-storage
-	s := NewStore()
-	tmpDir, _ := ioutil.TempDir("", "store_test")
+	// Set up storage for FSM
+	tmpDir, err1 := ioutil.TempDir("", "raft-fsm-store")
+	if err1 != nil {
+		theFSM.logger.Printf("[ERROR] Unable to create temporary folder for raft: %v\n", err1.Error())
+		return fmt.Errorf("failed to instansiate temp folder: %v", err1)
+	}
 	defer os.RemoveAll(tmpDir)
-	s.RaftBind = "127.0.0.1:" + raftPort
-	s.RaftDir = tmpDir
-	if err := s.Open(anyPeer == ""); err != nil {
-		log.Fatalf("failed to open store: %s", err.Error())
+	theFSM.RaftDir = tmpDir
+
+	// Start FSM
+	if err2 := theFSM.Start(cfg.InitalPeer == ""); err2 != nil {
+		theFSM.logger.Printf("[ERROR] Unable to start FSM: %v\n", err2.Error())
+		return err2
 	}
 
-	// Start http endpoint
-	service := newCommService("127.0.0.1:"+joinPort, s)
-	s.logger.Println("Starting communication endpoint")
-	if err := service.Start(); err != nil {
-		s.logger.Fatalf("failed to start HTTP service: %s", err.Error())
+	// Start the communication service, to handle join requests.
+	service := newCommService("127.0.0.1:"+cPortStr, theFSM)
+	if err3 := service.Start(); err3 != nil {
+		theFSM.logger.Printf("[ERROR] Unable to start communication service: %v\n", err3.Error())
+		return err3
 	}
+	theFSM.logger.Printf("[INFO] Communication service started on on port %v\n", cPort)
 
 	// Join any known peers
-	if anyPeer != "" {
-		if err := join(anyPeer, raftPort, ownIP); err != nil {
-			log.Fatalf("failed to join node at %s: %s", anyPeer, err.Error())
+	if cfg.InitalPeer != "" {
+		err := join(cfg.InitalPeer, rPortStr, cfg.OwnIP, theFSM.logger)
+		if err != nil {
+			theFSM.logger.Printf("[ERROR] Unable to join node at %s: %s\n", cfg.InitalPeer, err.Error())
+			return err
 		}
 	}
 
-	// Trigger callbacks
-	// leaderCh = s.raft.LeaderCh()
-	// select{
-	// case isLeader := <-leaderCh:
-	// 	s.
-	// }
+	// TODO: Implement worker here....
+	select {}
 
 }
 
-func join(joinAddr, raftAddr, ownIP string) error {
+func join(joinAddr, raftAddr, ownIP string, logger *log.Logger) error {
 	b, err := json.Marshal(map[string]string{"addr": raftAddr})
 	if err != nil {
 		return err
@@ -63,7 +74,7 @@ func join(joinAddr, raftAddr, ownIP string) error {
 	}
 
 	url := fmt.Sprintf("http://%s/join", joinAddr)
-	log.Printf("[INFO] Attempting to join %v", url)
+	logger.Printf("[INFO] Attempting to join %v", url)
 	resp, err := http.Post(url, "application-type/json", bytes.NewReader(b))
 	if err != nil {
 		return err
@@ -71,7 +82,7 @@ func join(joinAddr, raftAddr, ownIP string) error {
 
 	// Peer admitted on first try (ie. luckily tried the leader on first try)
 	if resp.Header.Get("X-Raft-Leader") == "" {
-		log.Printf("[INFO] Successfully joined raft\n")
+		logger.Printf("[INFO] Successfully joined raft\n")
 		return nil
 	}
 
@@ -81,13 +92,13 @@ func join(joinAddr, raftAddr, ownIP string) error {
 
 	// Request the leader
 	url = fmt.Sprintf("http://%s/join", leaderAddr)
-	log.Printf("[INFO] Redirected! Attempting to join: %v\n", url)
+	logger.Printf("[INFO] Redirected! Attempting to join: %v\n", url)
 	resp2, err := http.Post(url, "application-type/json", bytes.NewReader(b))
 	if err != nil {
 		defer resp2.Body.Close()
 		return err
 	}
 	resp2.Body.Close()
-	log.Printf("[INFO] Successfully joined raft\n")
+	logger.Printf("[INFO] Successfully joined raft\n")
 	return nil
 }

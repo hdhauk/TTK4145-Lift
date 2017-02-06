@@ -68,12 +68,18 @@ func main() {
 
 	// Initalize globalstate
 	ip, _ := peerdiscovery.GetLocalIP()
+	gsCfg := globalstate.Config{
+		RaftPort: r,
+		OwnIP:    ip,
+	}
+
 	if len(peers) == 0 {
-		go globalstate.Init("", commPort, raftPort, ip)
+		go globalstate.Init(gsCfg)
 	} else {
 		for _, anyPeer := range peers {
 			logger.Noticef("Identified raft. Starting global state with connection to: %s\n", anyPeer.IP+":"+anyPeer.JoinPort)
-			go globalstate.Init(anyPeer.IP+":"+anyPeer.JoinPort, commPort, raftPort, ip)
+			gsCfg.InitalPeer = anyPeer.IP + ":" + anyPeer.JoinPort
+			go globalstate.Init(gsCfg)
 			break
 		}
 	}

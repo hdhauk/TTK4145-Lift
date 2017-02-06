@@ -12,15 +12,6 @@ import (
 
 // StoreInterface is the interface Raft-backed key-value stores must implement.
 type StoreInterface interface {
-	// Get returns the value for the given key.
-	Get(key string) (string, error)
-
-	// Set sets the value for the given key, via distributed consensus.
-	Set(key, value string) error
-
-	// Delete removes the given key, via distributed consensus.
-	Delete(key string) error
-
 	// Join joins the node, reachable at addr, to the cluster.
 	Join(addr string) error
 

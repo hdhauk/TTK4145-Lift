@@ -17,7 +17,16 @@ TL;DR:
 */
 package globalstate
 
-import "time"
+// Config defines ...TODO: Something informative here...
+type Config struct {
+	RaftPort        int
+	InitalPeer      string
+	OwnIP           string
+	OnPromotion     func()
+	OnDemotion      func()
+	IncomingCommand func(floor int)
+	CostFunction    func(State) string
+}
 
 // Add emits the given Update to the current cluster leader. It will
 // return an error of the leader is unreachable, or if it fail to recieve an
@@ -40,37 +49,6 @@ func GetState() interface{} {
 type Update struct {
 	// Type may be: "FLOOR", "MOTOR", "ORDER"
 	Type string
-}
-
-// State defines the centralized state managed by the raft-cluster
-type State struct {
-	// Number of floors for all elevators
-	Floors uint
-	// ClusterSize is the number of nodes in the cluster
-	ClusterSize uint
-	// Nodes is the IP:port of all nodes in the system
-	Nodes []Elevator
-	// HallUpButtons, true of they are lit. Equivalent with an order there
-	HallUpButtons  []Status
-	HallDownButton []Status
-}
-
-// Elevator defines the publicly available information about the elevators in the cluster.
-type Elevator struct {
-	ID            string
-	LastFloor     uint
-	LastDirection uint
-}
-
-// Status defines the status of a button.
-//All buttons of the same type on the same floor are considered equal,
-//and as long as the elevator is online will behave the exact same way.
-// ie. will pressing the up-button at floor 3 on one elevator yield the same
-// result as pressing the same button on another elevator.
-type Status struct {
-	AssignedTo string    // elevator.id
-	LastStatus string    // "UNASSIGNED", "ASSIGNED", "DONE"
-	LastChange time.Time //
 }
 
 // DispatchOrder dispatches an order to the provided elevator.
