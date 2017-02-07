@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	"bitbucket.org/halvor_haukvik/ttk4145-elevator/peerdiscovery"
-
 	"github.com/op/go-logging"
 )
 
@@ -19,14 +17,6 @@ func initLogger() {
 	stdFormatter := logging.NewBackendFormatter(stdBackend, stdFormat)
 	logging.SetBackend(stdFormatter)
 
-}
-
-func logPeerUpdate(p peerdiscovery.PeerUpdate) {
-	logger.Notice("Peer update:\n")
-	//fmt.Printf("\tPeers:\t%q\n", p.Peers)
-	printPeerArr(p.Peers)
-	fmt.Printf("\tNew:\t%q\n", p.New)
-	fmt.Printf("\tLost:\t%q\n", p.Lost)
 }
 
 func printPeerArr(p []string) {

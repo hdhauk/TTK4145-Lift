@@ -17,66 +17,86 @@ TL;DR:
 */
 package globalstate
 
-import "time"
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"strconv"
+	"strings"
+)
 
-// Init intializes the raft-node to be prepared to join a raft-cluster of size
-// given by nodes. It sets up all nessesary listeners.
-func Init(nodes int, onPromotion func(), onDemotion func()) {
-	// cfg := raft.DefaultConfig()
-
+// Config defines ...TODO: Something informative here...
+type Config struct {
+	RaftPort        int
+	InitalPeer      string
+	OwnIP           string
+	OnPromotion     func()
+	OnDemotion      func()
+	IncomingCommand func(floor int)
+	CostFunction    func(State) string
 }
 
-// Add emits the given Update to the current cluster leader. It will
-// return an error of the leader is unreachable, or if it fail to recieve an
-//acknowledgement that the Update is committed to the cluster.
-func Add(u Update) error {
-	return nil
+// Update type constants
+const (
+	// AtFloor is the type for broadcasting new own positon
+	AtFloor = iota
+	// NewDir is the type for broadcasting a new elevator direction.
+	NewDir
+	// NewDst is the type for broadcasting a new target destination.
+	NewDst
+	// NewBtnPrees is the type for broadcasting that a button has been pressed.
+	NewBtnPress
+	// BtnPressExpedited is the type for broadcasting that an order has been expedited.
+	BtnPressExpedited
+)
+
+// LiftStatusUpdate defines an message with which you intend to update the global store with.
+type LiftStatusUpdate struct {
+	Floor uint
+	Dst   uint
+	Dir   string
 }
 
 // GetState returns a copy of the current cluster state.
-func GetState() State {
-	return State{}
+func GetState() interface{} {
+	return theFSM.GetState()
 }
 
-// Update defines all messages that may be sendt to the cluster.
-type Update struct {
-	// Type may be: "FLOOR", "MOTOR", "ORDER"
-	Type string
-}
+// SendLiftStatusUpdate asdasdas asdasd
+func SendLiftStatusUpdate(ls LiftStatusUpdate) error {
+	// Convert to liftStatus
+	status := liftStatus{
+		ID:          ownID,
+		LastFloor:   ls.Floor,
+		Destination: ls.Dst,
+		Direction:   ls.Dir,
+	}
 
-// State defines the centralized state managed by the raft-cluster
-type State struct {
-	// Number of floors for all elevators
-	Floors uint
-	// ClusterSize is the number of nodes in the cluster
-	ClusterSize uint
-	// Nodes is the IP:port of all nodes in the system
-	Nodes []Elevator
-	// HallUpButtons, true of they are lit. Equivalent with an order there
-	HallUpButtons  []Status
-	HallDownButton []Status
-}
+	b := new(bytes.Buffer)
+	json.NewEncoder(b).Encode(status)
 
-// Elevator defines the publicly available information about the elevators in the cluster.
-type Elevator struct {
-	ID            string
-	LastFloor     uint
-	LastDirection uint
-}
+	// Get a fresh leader ;)
+	<-leaderCh
+	leader := leaderComEndpoint(<-leaderCh)
+	url := fmt.Sprintf("http://%s/update/lift", leader)
+	res, err := http.Post(url, "application/json; charset=utf-8", b)
+	if err != nil {
+		return err
+	}
+	io.Copy(os.Stdout, res.Body)
 
-// Status defines the status of a button.
-//All buttons of the same type on the same floor are considered equal,
-//and as long as the elevator is online will behave the exact same way.
-// ie. will pressing the up-button at floor 3 on one elevator yield the same
-// result as pressing the same button on another elevator.
-type Status struct {
-	AssignedTo string    // elevator.id
-	LastStatus string    // "UNASSIGNED", "ASSIGNED", "DONE"
-	LastChange time.Time //
-}
-
-// DispatchOrder dispatches an order to the provided elevator.
-// The function will do nothing if the elevator isn't the master.
-func DispatchOrder(floor int, dir string, elevatorID string) error {
+	if res.Header.Get("X-Raft-Leader") == "" {
+		return nil
+	}
+	// TODO: What happens if gets redirected?
 	return nil
+}
+
+func leaderComEndpoint(leader string) string {
+	parts := strings.Split(leader, ":")
+	portStr, _ := strconv.Atoi(parts[1])
+	return fmt.Sprintf("%s:%d", parts[0], portStr+1)
 }

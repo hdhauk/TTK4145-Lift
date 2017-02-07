@@ -3,25 +3,37 @@ package main
 import (
 	"flag"
 	"fmt"
+	"math/rand"
 	"os"
 	"strconv"
 	"time"
 
+	"bitbucket.org/halvor_haukvik/ttk4145-elevator/globalstate"
 	"bitbucket.org/halvor_haukvik/ttk4145-elevator/peerdiscovery"
 )
 
+// Command line defaults
 const (
-	on  = true
-	off = false
+	defaultJoinPort = ":11000"
+	defaultRaftPort = ":12000"
 )
 
+// Command line parameters
+var nick string
+var simPort string
+
+// Pick ports randomly
+var r = 1024 + rand.Intn(64510)
+var raftPort = strconv.Itoa(r)
+var commPort = strconv.Itoa(r + 1)
+
 func main() {
+	fmt.Printf("raftPort: %s, joinPort: %s\n", raftPort, commPort)
 	initLogger()
-	// Handle application command-line flags
-	var nick string
-	var simPort string
-	flag.StringVar(&nick, "nick", "", "nick name of this peer")
-	flag.StringVar(&simPort, "sim", "", "listening port of the simulator")
+	// Parse arg flags
+	flag.StringVar(&nick, "nick", "", "Nickname of this peer")
+	flag.StringVar(&simPort, "sim", "", "Listening port of the simulator")
+
 	flag.Parse()
 	if simPort != "" {
 		logger.Notice("Starting in simulator mode.")
@@ -33,26 +45,58 @@ func main() {
 		ID: makeUUID(), Nick: peerName(nick),
 	}
 
-	// Setting up communication channels
-	// peerUpdateCh := make(chan peerdiscovery.PeerUpdate)
-	//peerTxEnable := make(chan bool)
-
-	// Setting up running routines
-	//go peerdiscovery.HeartBeatBeacon(33324, ownID.Nick, peerTxEnable)
-	go peerdiscovery.Start(33324, ownID.Nick, func(id, IP string) {
-		fmt.Printf("ID = %v\n", id)
-		fmt.Printf("IP = %v\n", IP)
+	// Initialize peer discovery
+	peers := make(map[string]peerdiscovery.Peer)
+	// peerCh := make(chan string)
+	go peerdiscovery.Start(33324, ownID.Nick, commPort, raftPort, func(p peerdiscovery.Peer) {
+		peers[p.Nick+"@"+p.IP] = p
 	})
+	time.Sleep(1 * time.Second)
 
-	//go driver.Init(true, simPort)
+	// Initialize driver
+	// cfg := driver.Config{
+	// 	SimMode: true,
+	// 	SimPort: "53566",
+	// 	Floors:  4,
+	// 	OnBtnPress: func(b driver.Btn) {
+	// 		driver.BtnLEDSet(b)
+	// 		time.Sleep(5 * time.Second)
+	// 		driver.BtnLEDClear(b)
+	// 	},
+	// }
+	// go driver.Init(cfg)
 
-	for {
-		select {
-		case <-time.After(1 * time.Second):
-			//logPeerUpdate(p)
+	// Initalize globalstate
+	ip, _ := peerdiscovery.GetLocalIP()
+	gsCfg := globalstate.Config{
+		RaftPort: r,
+		OwnIP:    ip,
+	}
 
+	if len(peers) == 0 {
+		go globalstate.Init(gsCfg)
+	} else {
+		for _, anyPeer := range peers {
+			logger.Noticef("Identified raft. Starting global state with connection to: %s\n", anyPeer.IP+":"+anyPeer.JoinPort)
+			gsCfg.InitalPeer = anyPeer.IP + ":" + anyPeer.JoinPort
+			go globalstate.Init(gsCfg)
+			break
 		}
 	}
+
+	time.Sleep(5 * time.Second)
+	status := globalstate.LiftStatusUpdate{
+		Floor: 1,
+		Dst:   2,
+		Dir:   "DOWN",
+	}
+	globalstate.SendLiftStatusUpdate(status)
+	time.Sleep(4 * time.Second)
+	temp := globalstate.GetState()
+	fmt.Printf("%+v", temp)
+
+	select {}
+
 }
 
 func peerName(id string) string {

@@ -2,9 +2,58 @@ package driver
 
 import (
 	"fmt"
+	"log"
+	"os"
 	"strconv"
-	"time"
 )
+
+// Package global channels
+var initDone chan bool
+var floorDstCh chan int
+var btnPressCh chan Btn
+var floorDetectCh chan int
+var apFloorCh chan int
+
+// Init intializes the driver, and return an error if unable to connect to
+// the driver or the simulator.
+func Init(c Config) error {
+	// Set configuration
+	if err := setConfig(c); err != nil {
+		cfg.Logger.Printf("Failed to set driver configuration: %v", err)
+		return err
+	}
+
+	// Assign either hardware or simulator functions to driver handle
+	if c.SimMode == false {
+		driver.init = initHW
+		driver.setMotorDir = setMotorDirHW
+		driver.setBtnLED = setBtnLEDHW
+		driver.setFloorLED = setFloorLEDHW
+		driver.setDoorLED = setDoorLEDHW
+		driver.readOrderBtn = readOrderBtnHW
+		driver.readFloor = readFloorHW
+	}
+
+	// Initialize channels
+	initDone = make(chan bool)
+	btnPressCh = make(chan Btn, 4)
+	floorDetectCh = make(chan int)
+	apFloorCh = make(chan int)
+	floorDstCh = make(chan int)
+
+	// Spawn workers
+	go btnScan(btnPressCh)
+	go floorDetect(floorDetectCh)
+	// TODO: What workers do we need here ¯\_(ツ)_/¯
+	//go eventHandler(btnPressCh, floorDetectCh)
+	go btnPressHandler(btnPressCh)
+	go floorDetectHandler(floorDetectCh, apFloorCh)
+	go autoPilot(apFloorCh)
+	go driver.init(cfg.SimPort)
+
+	// Block until stack unwind
+	select {}
+}
 
 // Default config
 var cfg = Config{
@@ -17,13 +66,13 @@ var cfg = Config{
 	OnNewDirection: func(dir string) {
 		fmt.Printf("onNewDirection callback not set! Dir: %v\n", dir)
 	},
-	OnBtnPress: func(btnType string, floor int) {
-		fmt.Printf("onBtnPress callback not set! Type: %v, Floor: %v\n", btnType, floor)
+	OnBtnPress: func(b Btn) {
+		fmt.Printf("onBtnPress callback not set! Type: %v, Floor: %v\n", b.Type, b.Floor)
 	},
+	Logger: log.New(os.Stdout, "driver-default-debugger:", log.Lshortfile|log.Ltime),
 }
 
-// Config defines the properties of the elevator and callbacks to the following
-// events:
+// Config defines the properties of the elevator and callbacks to the following events
 //  * OnFloorDetect - The elevator just reached a floor. May or may not stop there.
 //  * OnNewDirection - The elevator either stopped or started moving in either direction.
 //  * OnBtnPress - A button have been depressed.
@@ -33,7 +82,8 @@ type Config struct {
 	Floors         int
 	OnFloorDetect  func(floor int)
 	OnNewDirection func(direction string)
-	OnBtnPress     func(btnType string, floor int)
+	OnBtnPress     func(b Btn)
+	Logger         *log.Logger
 }
 
 var driver = struct {
@@ -54,44 +104,6 @@ var driver = struct {
 	readFloor:    readFloorSim,
 }
 
-var initDone = make(chan bool)
-
-// Init intializes the driver, and return an error if unable to connect to
-// the driver or the simulator.
-func Init(c Config) error {
-	// Set configuration
-	if err := setConfig(c); err != nil {
-		fmt.Printf("Failed to set driver configuration: %v", err)
-		return err
-	}
-
-	// Assign either hardware or simulator functions to driver handle
-	if cfg.SimMode == false {
-		driver.init = initHW
-		driver.setMotorDir = setMotorDirHW
-		driver.setBtnLED = setBtnLEDHW
-		driver.setFloorLED = setFloorLEDHW
-		driver.setDoorLED = setDoorLEDHW
-		driver.readOrderBtn = readOrderBtnHW
-		driver.readFloor = readFloorHW
-	}
-
-	fmt.Println("Config set")
-	if cfg.SimMode == true {
-		go simBtnScan()
-		go simFloorDetect()
-	}
-
-	// Spawn workers
-	// TODO: What workers do we need here ¯\_(ツ)_/¯
-	go eventHandler()
-	go autoPilot()
-	go initSim(cfg.SimPort)
-	time.Sleep(1 * time.Hour)
-
-	return nil
-}
-
 // Config helper functions
 func setConfig(c Config) error {
 	if c.SimMode {
@@ -100,6 +112,7 @@ func setConfig(c Config) error {
 		}
 	}
 	if c.Floors < 0 {
+		cfg.Logger.Printf("negative nu,ber of floos, (%v) not supported\n", c.Floors)
 		return fmt.Errorf("negative number of floors (%v) not supported", c.Floors)
 	}
 
@@ -119,9 +132,11 @@ func setConfig(c Config) error {
 func validatePort(port string) error {
 	i, err := strconv.Atoi(port)
 	if err != nil {
+		cfg.Logger.Printf("port validation failed. Unable to parse the portnumber: %v\n", port)
 		return err
 	}
 	if i < 1024 || i > 65535 {
+		cfg.Logger.Printf("port %d not in valid range range (1024-65553)\n", i)
 		return fmt.Errorf("port %d not in valid range range (1024-65553)", i)
 	}
 	return nil

@@ -1,8 +1,7 @@
 /*
 Package driver provides control of both simulated and actual elevators.
 The package also usure that the floor-indicator always show the correct floor,
-and that the carrige always have a closed door unless stationary at a floor.
-*/
+and that the carrige always have a closed door unless stationary at a floor.*/
 package driver
 
 // GoToFloor sends the elevator carrige to the desired floor and stop there,
@@ -10,6 +9,10 @@ package driver
 // A second call to the function will void the previous order if the carrige
 // haven't reached its destination.
 func GoToFloor(floor int) {
+	if floor > cfg.Floors-1 || floor < 0 {
+		cfg.Logger.Printf("invalid floor requested: %v\n", floor)
+		return
+	}
 	if floor >= 0 {
 		floorDstCh <- floor
 	}
@@ -23,18 +26,21 @@ func GoToFloor(floor int) {
 
 // BtnLEDClear turns off the LED in the provided button.
 func BtnLEDClear(b Btn) {
-
+	// TODO: Check for race conditions
+	driver.setBtnLED(b, false)
 }
 
 // BtnLEDSet turns on the LED in the provided button.
 func BtnLEDSet(b Btn) {
-
+	// TODO: Check for race conditions
+	driver.setBtnLED(b, true)
 }
 
 // BtnType defines the 3 types of buttons that are in use. In order to use the
 // correct integer, the types are available as constants.
 type BtnType int
 
+// Button type constants
 const (
 	// HallUp is located outside of the elevator
 	HallUp BtnType = iota
@@ -42,7 +48,10 @@ const (
 	HallDown
 	// Cab is located inside of the elevator
 	Cab
+)
 
+// Motor direction constants
+const (
 	stop = "STOP"
 	up   = "UP"
 	down = "DOWN"
