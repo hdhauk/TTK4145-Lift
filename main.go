@@ -90,8 +90,16 @@ func main() {
 		Dst:   2,
 		Dir:   "DOWN",
 	}
-	globalstate.SendLiftStatusUpdate(status)
-	time.Sleep(4 * time.Second)
+	globalstate.UpdateLiftStatus(status)
+
+	bsu := globalstate.ButtonStatusUpdate{
+		Floor:  2,
+		Dir:    "down",
+		Status: globalstate.BtnStateDone,
+	}
+	globalstate.UpdateButtonStatus(bsu)
+
+	time.Sleep(10 * time.Second)
 	temp := globalstate.GetState()
 	fmt.Printf("%+v", temp)
 

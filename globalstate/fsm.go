@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"strconv"
 	"sync"
 	"time"
 
@@ -112,7 +113,7 @@ func (f *fsm) Apply(l *raft.Log) interface{} {
 	case "btnUpUpdate":
 		return f.applyBtnUpUpdate(c.Key, c.Value)
 	case "btnDownUpdate":
-		return f.appyBtnDownUpdate(c.Key, c.Value)
+		return f.applyBtnDownUpdate(c.Key, c.Value)
 	default:
 		f.logger.Printf(fmt.Sprintf("Unrecognized command: %s", c.Type))
 		return nil
@@ -163,27 +164,35 @@ func (f *fsm) applyNodeUpdate(nodeID string, e []byte) interface{} {
 	return nil
 }
 
-func (f *fsm) applyBtnUpUpdate(floor string, s interface{}) interface{} {
+func (f *fsm) applyBtnUpUpdate(floor string, b []byte) interface{} {
+	// Unmarshal ButtonStatusUpdate
+	var status Status
+	err := json.Unmarshal(b, &status)
+	if err != nil {
+		f.logger.Printf("[ERROR] Unable to unmarshal status: %s\n", err.Error())
+		return fmt.Errorf("unable to unmarshal ButtonUpStatusUpdate: %s", err.Error())
+	}
+
+	// Update the actual datastore entry
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	btnStatus, _ := s.(Status)
-	// if !ok {
-	// 	f.logger.Printf("[ERROR] Unable to apply btnUpUpdate. Bad status object: floor=%s , status=%v", floor, s)
-	// 	return nil
-	// }
-	f.state.HallUpButtons[floor] = btnStatus.DeepCopy()
+	f.state.HallUpButtons[floor] = status
 	return nil
 }
 
-func (f *fsm) appyBtnDownUpdate(floor string, s interface{}) interface{} {
+func (f *fsm) applyBtnDownUpdate(floor string, b []byte) interface{} {
+	// Unmarshal ButtonStatusUpdate
+	var status Status
+	err := json.Unmarshal(b, &status)
+	if err != nil {
+		f.logger.Printf("[ERROR] Unable to unmarshal status: %s\n", err.Error())
+		return fmt.Errorf("unable to unmarshal ButtonDownStatusUpdate: %s", err.Error())
+	}
+
+	// Update the actual datastore entry
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	btnStatus, _ := s.(Status)
-	// if !ok {
-	// 	f.logger.Printf("[ERROR] Unable to apply btnDownUpdate. Bad status object: floor=%s , status=%v", floor, s)
-	// 	return nil
-	// }
-	f.state.HallDownButtons[floor] = btnStatus.DeepCopy()
+	f.state.HallDownButtons[floor] = status
 	return nil
 }
 
@@ -244,6 +253,7 @@ func (f *fsm) GetState() State {
 }
 
 func (f *fsm) UpdateLiftStatus(ls liftStatus) error {
+	// Make sure the node currently hold leadership.
 	if f.raft.State() != raft.Leader {
 		f.logger.Printf("[WARN] Unable to update lift status. Not currently leader.\n")
 		return fmt.Errorf("not leader")
@@ -268,4 +278,57 @@ func (f *fsm) UpdateLiftStatus(ls liftStatus) error {
 	// Apply command to raft
 	future := f.raft.Apply(b, 5*time.Second)
 	return future.Error()
+}
+
+func (f *fsm) UpdateButtonStatus(bsu ButtonStatusUpdate) error {
+	// Make sure the node currently hold leadership.
+	if f.raft.State() != raft.Leader {
+		f.logger.Printf("[WARN] Unable to update button status. Not currently leader.\n")
+		return fmt.Errorf("not leader")
+	}
+
+	// Determine Direction
+	var t string
+	if bsu.Dir == "up" || bsu.Dir == "UP" {
+		t = "btnUpUpdate"
+	} else if bsu.Dir == "down" || bsu.Dir == "DOWN" {
+		t = "btnDownUpdate"
+	} else {
+		f.logger.Printf("[ERROR] Unable to parse direction in button update: %s\n", bsu.Dir)
+		return fmt.Errorf("unable to parse direction: %s", bsu.Dir)
+	}
+
+	// Create status
+	status := Status{
+		AssignedTo: "",
+		LastStatus: bsu.Status,
+		LastChange: time.Now(),
+	}
+
+	// Marshal payload to bytes. No need for errorcheck, as it it just recently
+	// been unmarhaled by the same library.
+	v, err := json.Marshal(status)
+	if err != nil {
+		f.logger.Printf("[ERROR] Unable to marshal status: %s\n", err.Error())
+		return err
+	}
+
+	// Create log entry command for raft.
+	cmd := &command{
+		Type:  t,
+		Key:   strconv.Itoa(int(bsu.Floor)),
+		Value: v,
+	}
+
+	// Marshal command to json
+	b, err := json.Marshal(cmd)
+	if err != nil {
+		f.logger.Printf("[ERROR] Failed to marshal raft log command: %s\n", err.Error())
+		return err
+	}
+
+	// Apply command to raft
+	future := f.raft.Apply(b, 5*time.Second)
+	return future.Error()
+
 }

@@ -22,6 +22,7 @@ type StoreInterface interface {
 	GetStatus() uint32
 
 	UpdateLiftStatus(ls liftStatus) error
+	UpdateButtonStatus(bsu ButtonStatusUpdate) error
 }
 
 // service provides HTTP service for admitting new peers and command messages.
@@ -80,6 +81,8 @@ func (s *service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	} else if strings.HasPrefix(p, "/update/lift") {
 		s.HandleLiftUpdate(w, r)
 		// Handle incomming updates
+	} else if strings.HasPrefix(p, "/update/button") {
+		s.HandleButtonUpdate(w, r)
 	} else if strings.HasPrefix(p, "/cmd") {
 		// Handle incomming command
 	} else {
@@ -88,6 +91,8 @@ func (s *service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// Endpoint handlers
+//==============================================================================
 func (s *service) HandleJoin(w http.ResponseWriter, r *http.Request) {
 	// Redirect if not currently leader
 	if s.store.GetStatus() != 2 {
@@ -143,11 +148,14 @@ func (s *service) HandleCmd(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *service) HandleLiftUpdate(w http.ResponseWriter, r *http.Request) {
-	var status liftStatus
+	// Check for empty reqest
 	if r.Body == nil {
 		http.Error(w, "No request body provided", http.StatusBadRequest)
 		return
 	}
+
+	// Unmarshal json object
+	var status liftStatus
 	err := json.NewDecoder(r.Body).Decode(&status)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -155,8 +163,32 @@ func (s *service) HandleLiftUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := s.store.UpdateLiftStatus(status); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(http.StatusInternalServerError)
 	}
-	log.Printf("[DEBUG] Recieved new liftStatus= %+v\n", status)
+	theFSM.logger.Printf("[INFO] Successfully accepted lift status update.")
+	w.WriteHeader(http.StatusOK)
+}
+
+func (s *service) HandleButtonUpdate(w http.ResponseWriter, r *http.Request) {
+	// Check for empty reqest
+	if r.Body == nil {
+		theFSM.logger.Printf("[WARN] Recieved empty button status update.\n")
+		http.Error(w, "No request body provided", http.StatusBadRequest)
+		return
+	}
+
+	// Unmarshal json object
+	var status ButtonStatusUpdate
+	err := json.NewDecoder(r.Body).Decode(&status)
+	if err != nil {
+		theFSM.logger.Println("[WARN] Unable to unmarshal incoming status update")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if err := s.store.UpdateButtonStatus(status); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+	theFSM.logger.Printf("[INFO] Successfully accepted button status update.")
 	w.WriteHeader(http.StatusOK)
 }
