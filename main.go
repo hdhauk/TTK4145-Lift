@@ -84,6 +84,17 @@ func main() {
 		}
 	}
 
+	time.Sleep(5 * time.Second)
+	status := globalstate.LiftStatusUpdate{
+		Floor: 1,
+		Dst:   2,
+		Dir:   "DOWN",
+	}
+	globalstate.SendLiftStatusUpdate(status)
+	time.Sleep(4 * time.Second)
+	temp := globalstate.GetState()
+	fmt.Printf("%+v", temp)
+
 	select {}
 
 }

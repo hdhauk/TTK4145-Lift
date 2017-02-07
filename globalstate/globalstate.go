@@ -17,6 +17,17 @@ TL;DR:
 */
 package globalstate
 
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"strconv"
+	"strings"
+)
+
 // Config defines ...TODO: Something informative here...
 type Config struct {
 	RaftPort        int
@@ -28,31 +39,64 @@ type Config struct {
 	CostFunction    func(State) string
 }
 
-// Add emits the given Update to the current cluster leader. It will
-// return an error of the leader is unreachable, or if it fail to recieve an
-//acknowledgement that the Update is committed to the cluster.
-func Add() error {
-	// fmt.Println("Attempting to add a key-value pair...")
-	// if err := gstore.Set("testKey", "testValue"); err != nil {
-	// 	return err
-	// }
-	return nil
+// Update type constants
+const (
+	// AtFloor is the type for broadcasting new own positon
+	AtFloor = iota
+	// NewDir is the type for broadcasting a new elevator direction.
+	NewDir
+	// NewDst is the type for broadcasting a new target destination.
+	NewDst
+	// NewBtnPrees is the type for broadcasting that a button has been pressed.
+	NewBtnPress
+	// BtnPressExpedited is the type for broadcasting that an order has been expedited.
+	BtnPressExpedited
+)
+
+// LiftStatusUpdate defines an message with which you intend to update the global store with.
+type LiftStatusUpdate struct {
+	Floor uint
+	Dst   uint
+	Dir   string
 }
 
 // GetState returns a copy of the current cluster state.
 func GetState() interface{} {
-	//return gstore.Snapshot()
+	return theFSM.GetState()
+}
+
+// SendLiftStatusUpdate asdasdas asdasd
+func SendLiftStatusUpdate(ls LiftStatusUpdate) error {
+	// Convert to liftStatus
+	status := liftStatus{
+		ID:          ownID,
+		LastFloor:   ls.Floor,
+		Destination: ls.Dst,
+		Direction:   ls.Dir,
+	}
+
+	b := new(bytes.Buffer)
+	json.NewEncoder(b).Encode(status)
+
+	// Get a fresh leader ;)
+	<-leaderCh
+	leader := leaderComEndpoint(<-leaderCh)
+	url := fmt.Sprintf("http://%s/update/lift", leader)
+	res, err := http.Post(url, "application/json; charset=utf-8", b)
+	if err != nil {
+		return err
+	}
+	io.Copy(os.Stdout, res.Body)
+
+	if res.Header.Get("X-Raft-Leader") == "" {
+		return nil
+	}
+	// TODO: What happens if gets redirected?
 	return nil
 }
 
-// Update defines all messages that may be sendt to the cluster.
-type Update struct {
-	// Type may be: "FLOOR", "MOTOR", "ORDER"
-	Type string
-}
-
-// DispatchOrder dispatches an order to the provided elevator.
-// The function will do nothing if the elevator isn't the master.
-func DispatchOrder(floor int, dir string, elevatorID string) error {
-	return nil
+func leaderComEndpoint(leader string) string {
+	parts := strings.Split(leader, ":")
+	portStr, _ := strconv.Atoi(parts[1])
+	return fmt.Sprintf("%s:%d", parts[0], portStr+1)
 }

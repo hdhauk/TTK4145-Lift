@@ -20,6 +20,8 @@ type StoreInterface interface {
 
 	// GetStatus TODO
 	GetStatus() uint32
+
+	UpdateLiftStatus(ls liftStatus) error
 }
 
 // service provides HTTP service for admitting new peers and command messages.
@@ -27,8 +29,7 @@ type service struct {
 	addr       string
 	leaderAddr string
 	ln         net.Listener
-
-	store StoreInterface
+	store      StoreInterface
 }
 
 func newCommService(addr string, store StoreInterface) *service {
@@ -76,8 +77,9 @@ func (s *service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if strings.HasPrefix(p, "/join") {
 		// Handle join requests
 		s.HandleJoin(w, r)
-	} else if strings.HasPrefix(p, "/key") {
-		// Handle incomming key update
+	} else if strings.HasPrefix(p, "/update/lift") {
+		s.HandleLiftUpdate(w, r)
+		// Handle incomming updates
 	} else if strings.HasPrefix(p, "/cmd") {
 		// Handle incomming command
 	} else {
@@ -140,12 +142,21 @@ func (s *service) HandleCmd(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("HandleCmd not implemented yet.")
 }
 
-func (s *service) HandleKey(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("HandleKey not implemented yet.")
+func (s *service) HandleLiftUpdate(w http.ResponseWriter, r *http.Request) {
+	var status liftStatus
+	if r.Body == nil {
+		http.Error(w, "No request body provided", http.StatusBadRequest)
+		return
+	}
+	err := json.NewDecoder(r.Body).Decode(&status)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
-}
-
-// Addr returns the address on which the Service is listening
-func (s *service) Addr() net.Addr {
-	return s.ln.Addr()
+	if err := s.store.UpdateLiftStatus(status); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+	}
+	log.Printf("[DEBUG] Recieved new liftStatus= %+v\n", status)
+	w.WriteHeader(http.StatusOK)
 }

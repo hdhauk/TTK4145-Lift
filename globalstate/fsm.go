@@ -7,12 +7,10 @@ import (
 	"log"
 	"net"
 	"os"
-	"path/filepath"
 	"sync"
 	"time"
 
 	"github.com/hashicorp/raft"
-	raftboltdb "github.com/hashicorp/raft-boltdb"
 )
 
 // fsm is the datastructure that hold pretty much everything interesting in
@@ -31,15 +29,23 @@ type fsm struct {
 }
 
 func newFSM(rPortStr string) *fsm {
+	s := State{
+		Floors:          4,
+		Nodes:           make(map[string]liftStatus),
+		HallUpButtons:   make(map[string]Status),
+		HallDownButtons: make(map[string]Status),
+	}
 	return &fsm{
 		RaftPort: rPortStr,
-		logger:   log.New(os.Stderr, "globalstore -->", log.Ltime|log.Lshortfile),
+		state:    s,
+		logger:   log.New(os.Stderr, "[globalstore] ", log.Ltime|log.Lshortfile),
 	}
 }
 
 func (f *fsm) Start(enableSingle bool) error {
 	// Set up Raft configuration
 	raftCfg := raft.DefaultConfig()
+	raftCfg.Logger = f.logger
 
 	// Set up Raft communication.
 	rSocket := "127.0.0.1:" + f.RaftPort
@@ -72,15 +78,13 @@ func (f *fsm) Start(enableSingle bool) error {
 		return fmt.Errorf("file snapshot store: %s", err)
 	}
 
-	// Create log store and stable store
-	logStore, err := raftboltdb.NewBoltStore(filepath.Join(f.RaftDir, "raft.db"))
-	if err != nil {
-		f.logger.Printf("[ERROR] Unable to create boltDB log and stable store: %v\n", err.Error())
-		return fmt.Errorf("new bolt store: %s", err)
-	}
+	// Create log store and stable store. These only exist in memory, as our
+	// database is useless for old information anyway.
+	logStore := raft.NewInmemStore()
+	stableStore := raft.NewInmemStore()
 
 	// Instantiate Raft
-	ra, err := raft.NewRaft(raftCfg, f, logStore, logStore, snapshots, peerStore, trans)
+	ra, err := raft.NewRaft(raftCfg, f, logStore, stableStore, snapshots, peerStore, trans)
 	if err != nil {
 		f.logger.Printf("[ERROR] Unable to instansiate raft: %v\n", err.Error())
 		return fmt.Errorf("new raft: %s", err)
@@ -121,13 +125,13 @@ type command struct {
 	/*
 	  Types:
 	  - "updateFloor": key=<Don't Care>   Value=<floors int>
-	  - "nodeUpdate":  key=<up:raftport>  Value=<struct{ID string, LastFloor, Destination uint}>
+	  - "nodeUpdate":  key=<ip:raftport>  Value=<struct{ID string, LastFloor, Destination uint}>
 	  - "btnUpUpdate": key=<floor>        Value=<struct{AssignedTo, LastStatus string, LastChange time.Time}>
 	  - "btnDownUpdate": key=<floor>      Value=<struct{AssignedTo, LastStatus string, LastChange time.Time}>
 	*/
-	Type  string      `json:"type,omitempty"`
-	Key   string      `json:"key,omitempty"`
-	Value interface{} `json:"value,omitempty"`
+	Type  string `json:"type,omitempty"`
+	Key   string `json:"key,omitempty"`
+	Value []byte `json:"value,omitempty"`
 }
 
 func (f *fsm) applyUpdateFloor(floor interface{}) interface{} {
@@ -143,15 +147,19 @@ func (f *fsm) applyUpdateFloor(floor interface{}) interface{} {
 	return nil
 }
 
-func (f *fsm) applyNodeUpdate(nodeID string, e interface{}) interface{} {
+func (f *fsm) applyNodeUpdate(nodeID string, e []byte) interface{} {
+	// Unmarshal liftstatus
+	var lift liftStatus
+	err := json.Unmarshal(e, &lift)
+	if err != nil {
+		f.logger.Printf("[ERROR] Unable to unmarhal liftStatus: %s\n", err.Error())
+		return fmt.Errorf("unable to unmarshal liftstats")
+	}
+
+	// Update the actual datastore entry
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	elev, _ := e.(Elevator)
-	// if !ok {
-	// 	f.logger.Printf("[ERROR] Unable to apply nodeUpdate. Bad node: nodeID=%v , Elevator=%v", nodeID, e)
-	// 	return nil
-	// }
-	f.state.Nodes[nodeID] = elev.DeepCopy()
+	f.state.Nodes[nodeID] = lift
 	return nil
 }
 
@@ -175,7 +183,7 @@ func (f *fsm) appyBtnDownUpdate(floor string, s interface{}) interface{} {
 	// 	f.logger.Printf("[ERROR] Unable to apply btnDownUpdate. Bad status object: floor=%s , status=%v", floor, s)
 	// 	return nil
 	// }
-	f.state.HallDownButton[floor] = btnStatus.DeepCopy()
+	f.state.HallDownButtons[floor] = btnStatus.DeepCopy()
 	return nil
 }
 
@@ -233,4 +241,31 @@ func (f *fsm) GetState() State {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return f.state.DeepCopy()
+}
+
+func (f *fsm) UpdateLiftStatus(ls liftStatus) error {
+	if f.raft.State() != raft.Leader {
+		f.logger.Printf("[WARN] Unable to update lift status. Not currently leader.\n")
+		return fmt.Errorf("not leader")
+	}
+
+	v, _ := json.Marshal(ls)
+
+	// Create log entry for raft.
+	cmd := &command{
+		Type:  "nodeUpdate",
+		Key:   ls.ID,
+		Value: v,
+	}
+
+	// Encode to json
+	b, err := json.Marshal(cmd)
+	if err != nil {
+		f.logger.Printf("[ERROR] Failed to encode json: %s\n", err.Error())
+		return err
+	}
+
+	// Apply command to raft
+	future := f.raft.Apply(b, 5*time.Second)
+	return future.Error()
 }

@@ -12,6 +12,10 @@ import (
 	"strings"
 )
 
+var leaderCh = make(chan string)
+var ownID string // TODO: move into fsm...
+var theFSM *fsm
+
 // Init TODO: description
 func Init(cfg Config) error {
 	// Parse port
@@ -20,8 +24,10 @@ func Init(cfg Config) error {
 	cPort := rPort + 1
 	cPortStr := strconv.Itoa(cPort)
 
+	ownID = cfg.OwnIP + ":" + rPortStr
+
 	// Set up FSM
-	theFSM := newFSM(rPortStr)
+	theFSM = newFSM(rPortStr)
 
 	// Set up storage for FSM
 	tmpDir, err1 := ioutil.TempDir("", "raft-fsm-store")
@@ -54,6 +60,12 @@ func Init(cfg Config) error {
 			return err
 		}
 	}
+
+	go func() {
+		for {
+			leaderCh <- theFSM.GetLeader()
+		}
+	}()
 
 	// TODO: Implement worker here....
 	select {}
