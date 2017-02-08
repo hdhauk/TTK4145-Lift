@@ -31,6 +31,7 @@ type fsm struct {
 	logger   *log.Logger
 	initDone bool
 	ownID    string
+	config   Config
 }
 
 // newFSM return a new raft-enabled finite state machine.

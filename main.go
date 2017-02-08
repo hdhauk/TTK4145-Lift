@@ -69,8 +69,10 @@ func main() {
 	// Initalize globalstate
 	ip, _ := peerdiscovery.GetLocalIP()
 	gsCfg := globalstate.Config{
-		RaftPort: r,
-		OwnIP:    ip,
+		RaftPort:    r,
+		OwnIP:       ip,
+		OnPromotion: func() { fmt.Println("PROMOTED YAY!") },
+		OnDemotion:  func() { fmt.Println("DEMOTED, :(") },
 	}
 
 	if len(peers) == 0 {
@@ -95,12 +97,12 @@ func main() {
 	bsu := globalstate.ButtonStatusUpdate{
 		Floor:  2,
 		Dir:    "down",
-		Status: globalstate.BtnStateDone,
+		Status: globalstate.BtnStateAssigned,
 	}
 	globalstate.UpdateButtonStatus(bsu)
 
 	time.Sleep(10 * time.Second)
-	temp := globalstate.GetState()
+	temp, _ := globalstate.GetState()
 	fmt.Printf("%+v", temp)
 
 	select {}

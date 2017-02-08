@@ -28,6 +28,7 @@ func Init(cfg Config) error {
 	// Set up FSM
 	theFSM = newFSM(rPortStr)
 	theFSM.ownID = cfg.OwnIP + ":" + rPortStr
+	theFSM.config = cfg
 
 	// Set up storage for FSM
 	tmpDir, err1 := ioutil.TempDir("", "raft-fsm-store")
@@ -62,6 +63,10 @@ func Init(cfg Config) error {
 	}
 	// Wait for raft to either join or create a new raft. This usually takes 2-3 seconds
 	time.Sleep(4 * time.Second)
+
+	// Start the leader worker
+	go theFSM.LeaderMonitor()
+
 	theFSM.initDone = true
 	return nil
 }
