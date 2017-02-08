@@ -29,6 +29,8 @@ type fsm struct {
 	state    State
 	raft     *raft.Raft
 	logger   *log.Logger
+	initDone bool
+	ownID    string
 }
 
 // newFSM return a new raft-enabled finite state machine.

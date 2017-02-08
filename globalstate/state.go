@@ -1,9 +1,6 @@
 package globalstate
 
-import (
-	"fmt"
-	"time"
-)
+import "time"
 
 // State defines the centralized state managed by the raft-cluster
 type State struct {
@@ -16,9 +13,19 @@ type State struct {
 	HallDownButtons map[string]Status
 }
 
+// NewState returns a new state
+func NewState(floors uint) *State {
+	s := State{
+		Floors:          floors,
+		Nodes:           make(map[string]LiftStatus),
+		HallUpButtons:   make(map[string]Status),
+		HallDownButtons: make(map[string]Status),
+	}
+	return &s
+}
+
 // DeepCopy safely return a copy of the state
 func (s *State) DeepCopy() State {
-	fmt.Println("Before panic?")
 	nodes := make(map[string]LiftStatus)
 	for k, v := range s.Nodes {
 		nodes[k] = v.DeepCopy()

@@ -10,13 +10,14 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
-var leaderCh = make(chan string)
-var ownID string // TODO: move into fsm...
 var theFSM *fsm
 
-// Init TODO: description
+// Init initalizes the pakcage and stores one instance of the FSM globally in
+// the package. Trying to use the globalstate without haveing initialized will
+// imideatly rais an error.
 func Init(cfg Config) error {
 	// Parse port
 	rPort := cfg.RaftPort
@@ -24,10 +25,9 @@ func Init(cfg Config) error {
 	cPort := rPort + 1
 	cPortStr := strconv.Itoa(cPort)
 
-	ownID = cfg.OwnIP + ":" + rPortStr
-
 	// Set up FSM
 	theFSM = newFSM(rPortStr)
+	theFSM.ownID = cfg.OwnIP + ":" + rPortStr
 
 	// Set up storage for FSM
 	tmpDir, err1 := ioutil.TempDir("", "raft-fsm-store")
@@ -60,16 +60,10 @@ func Init(cfg Config) error {
 			return err
 		}
 	}
-
-	go func() {
-		for {
-			leaderCh <- theFSM.GetLeader()
-		}
-	}()
-
-	// TODO: Implement worker here....
-	select {}
-
+	// Wait for raft to either join or create a new raft. This usually takes 2-3 seconds
+	time.Sleep(4 * time.Second)
+	theFSM.initDone = true
+	return nil
 }
 
 func join(joinAddr, raftAddr, ownIP string, logger *log.Logger) error {

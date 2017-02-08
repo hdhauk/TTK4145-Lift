@@ -37,7 +37,7 @@ const (
 	// BtnStateAssigned is a pressed button that the leader have dispatched an elevator to.
 	BtnStateAssigned = "assigned"
 	// BtnStateDone is a button that is ready to be pressed (ie. no LED lit)
-	BtnStateDone = "donw"
+	BtnStateDone = "done"
 )
 
 // Config defines ...TODO: Something informative here...
@@ -70,9 +70,12 @@ type ButtonStatusUpdate struct {
 
 // UpdateLiftStatus asdasdas asdasd
 func UpdateLiftStatus(ls LiftStatusUpdate) error {
+	if !theFSM.initDone {
+		return fmt.Errorf("globalstate not yet initalized")
+	}
 	// Convert to liftStatus
 	status := LiftStatus{
-		ID:          ownID,
+		ID:          theFSM.ownID,
 		LastFloor:   ls.Floor,
 		Destination: ls.Dst,
 		Direction:   ls.Dir,
@@ -94,6 +97,9 @@ func UpdateLiftStatus(ls LiftStatusUpdate) error {
 // UpdateButtonStatus update the globalt store  with the supplied button update.
 // If unable to reach the raft-leader it will return an error.
 func UpdateButtonStatus(bs ButtonStatusUpdate) error {
+	if !theFSM.initDone {
+		return fmt.Errorf("globalstate not yet initalized")
+	}
 	// Marshal for sending as json
 	b := new(bytes.Buffer)
 	err := json.NewEncoder(b).Encode(bs)
@@ -115,8 +121,11 @@ func UpdateButtonStatus(bs ButtonStatusUpdate) error {
 }
 
 // GetState returns a copy of the current cluster state.
-func GetState() State {
-	return theFSM.GetState()
+func GetState() (State, error) {
+	if !theFSM.initDone {
+		return State{}, fmt.Errorf("globalstate not yet initalized")
+	}
+	return theFSM.GetState(), nil
 }
 
 // Helper functions
