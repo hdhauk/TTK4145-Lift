@@ -29,7 +29,7 @@ import (
 )
 
 // Public facing data types and constants
-//==============================================================================
+// =============================================================================
 
 const (
 	// BtnStateUnassigned is an button that have been pressed but no further action taken.
@@ -66,12 +66,12 @@ type ButtonStatusUpdate struct {
 }
 
 // Public facing functions
-//==============================================================================
+// =============================================================================
 
 // UpdateLiftStatus asdasdas asdasd
 func UpdateLiftStatus(ls LiftStatusUpdate) error {
 	// Convert to liftStatus
-	status := liftStatus{
+	status := LiftStatus{
 		ID:          ownID,
 		LastFloor:   ls.Floor,
 		Destination: ls.Dst,
@@ -120,7 +120,7 @@ func GetState() State {
 }
 
 // Helper functions
-//==============================================================================
+// =============================================================================
 func leaderComEndpoint(leader string) string {
 	parts := strings.Split(leader, ":")
 	portStr, _ := strconv.Atoi(parts[1])

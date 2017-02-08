@@ -10,7 +10,7 @@ type State struct {
 	// Number of floors for all elevators
 	Floors uint
 	// Nodes is the IP:port of all nodes in the system
-	Nodes map[string]liftStatus
+	Nodes map[string]LiftStatus
 	// HallUpButtons, true of they are lit. Equivalent with an order there
 	HallUpButtons   map[string]Status
 	HallDownButtons map[string]Status
@@ -19,7 +19,7 @@ type State struct {
 // DeepCopy safely return a copy of the state
 func (s *State) DeepCopy() State {
 	fmt.Println("Before panic?")
-	nodes := make(map[string]liftStatus)
+	nodes := make(map[string]LiftStatus)
 	for k, v := range s.Nodes {
 		nodes[k] = v.DeepCopy()
 	}
@@ -60,8 +60,8 @@ func (s *Status) DeepCopy() Status {
 	}
 }
 
-// liftStatus defines the publicly available information about the elevators in the cluster.
-type liftStatus struct {
+// LiftStatus defines the publicly available information about the elevators in the cluster.
+type LiftStatus struct {
 	ID          string
 	LastFloor   uint
 	Destination uint
@@ -69,8 +69,8 @@ type liftStatus struct {
 }
 
 // DeepCopy safely return a copy of the elevator.
-func (e *liftStatus) DeepCopy() liftStatus {
-	return liftStatus{
+func (e *LiftStatus) DeepCopy() LiftStatus {
+	return LiftStatus{
 		ID:          e.ID,
 		LastFloor:   e.LastFloor,
 		Destination: e.Destination,

@@ -15,11 +15,13 @@ import (
 )
 
 // fsm is the datastructure that hold pretty much everything interesting in
-// this package.
-// it need to fulfill the raft.fsm interface:
-//    * fsm.Appy(*raftLog) interface{}        // TODO: Testing
-//    * fsm.Snapshot()(FSMSnapshot, error)    // TODO: Testing
-//    * fsm.Restore(io.ReadCloser) error      // TODO: Testing
+// this package. The actual data is stored in the `state`-variable and read/writes
+// to it is protected by the mutex. The interface with the raft-library is DONE
+// through the raft-object, and itself provides replication hand heartbeating.
+// fsm need to fulfill the raft.fsm interface:
+//    * fsm.Appy(*raftLog) interface{}
+//    * fsm.Snapshot()(FSMSnapshot, error)
+//    * fsm.Restore(io.ReadCloser) error
 type fsm struct {
 	RaftDir  string
 	RaftPort string
@@ -29,10 +31,11 @@ type fsm struct {
 	logger   *log.Logger
 }
 
+// newFSM return a new raft-enabled finite state machine.
 func newFSM(rPortStr string) *fsm {
 	s := State{
 		Floors:          4,
-		Nodes:           make(map[string]liftStatus),
+		Nodes:           make(map[string]LiftStatus),
 		HallUpButtons:   make(map[string]Status),
 		HallDownButtons: make(map[string]Status),
 	}
@@ -95,6 +98,9 @@ func (f *fsm) Start(enableSingle bool) error {
 	return nil
 }
 
+// raft-interface functions
+// =============================================================================
+
 // Apply applies a Raft log entry to the key-value store.
 // It returns a value which will be made available in the
 // ApplyFuture returned by Raft.Apply method if that
@@ -118,82 +124,6 @@ func (f *fsm) Apply(l *raft.Log) interface{} {
 		f.logger.Printf(fmt.Sprintf("Unrecognized command: %s", c.Type))
 		return nil
 	}
-}
-
-// command defines actions that the raft.Log contain, and a series of
-// commands should be able to recreate the State.
-type command struct {
-	/*
-	  Types:
-	  - "updateFloor": key=<Don't Care>   Value=<floors int>
-	  - "nodeUpdate":  key=<ip:raftport>  Value=<struct{ID string, LastFloor, Destination uint}>
-	  - "btnUpUpdate": key=<floor>        Value=<struct{AssignedTo, LastStatus string, LastChange time.Time}>
-	  - "btnDownUpdate": key=<floor>      Value=<struct{AssignedTo, LastStatus string, LastChange time.Time}>
-	*/
-	Type  string `json:"type,omitempty"`
-	Key   string `json:"key,omitempty"`
-	Value []byte `json:"value,omitempty"`
-}
-
-func (f *fsm) applyUpdateFloor(floor interface{}) interface{} {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	floorInt, _ := floor.(uint)
-	// TODO: Implement test for the floorInt
-	// if !ok {
-	// 	f.logger.Printf("[ERROR] Unable to apply floorUpdate. Bad floor: %v\n", floor)
-	// 	return nil
-	// }
-	f.state.Floors = floorInt
-	return nil
-}
-
-func (f *fsm) applyNodeUpdate(nodeID string, e []byte) interface{} {
-	// Unmarshal liftstatus
-	var lift liftStatus
-	err := json.Unmarshal(e, &lift)
-	if err != nil {
-		f.logger.Printf("[ERROR] Unable to unmarhal liftStatus: %s\n", err.Error())
-		return fmt.Errorf("unable to unmarshal liftstats")
-	}
-
-	// Update the actual datastore entry
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.state.Nodes[nodeID] = lift
-	return nil
-}
-
-func (f *fsm) applyBtnUpUpdate(floor string, b []byte) interface{} {
-	// Unmarshal ButtonStatusUpdate
-	var status Status
-	err := json.Unmarshal(b, &status)
-	if err != nil {
-		f.logger.Printf("[ERROR] Unable to unmarshal status: %s\n", err.Error())
-		return fmt.Errorf("unable to unmarshal ButtonUpStatusUpdate: %s", err.Error())
-	}
-
-	// Update the actual datastore entry
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.state.HallUpButtons[floor] = status
-	return nil
-}
-
-func (f *fsm) applyBtnDownUpdate(floor string, b []byte) interface{} {
-	// Unmarshal ButtonStatusUpdate
-	var status Status
-	err := json.Unmarshal(b, &status)
-	if err != nil {
-		f.logger.Printf("[ERROR] Unable to unmarshal status: %s\n", err.Error())
-		return fmt.Errorf("unable to unmarshal ButtonDownStatusUpdate: %s", err.Error())
-	}
-
-	// Update the actual datastore entry
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.state.HallDownButtons[floor] = status
-	return nil
 }
 
 // Snapshot is used to support log compaction. This call should
@@ -222,6 +152,9 @@ func (f *fsm) Restore(rc io.ReadCloser) error {
 	f.state = newState
 	return nil
 }
+
+// Functions for general usage and update of the raft-fsm
+// =============================================================================
 
 // Getstatus TODO: description
 func (f *fsm) GetStatus() uint32 {
@@ -252,7 +185,7 @@ func (f *fsm) GetState() State {
 	return f.state.DeepCopy()
 }
 
-func (f *fsm) UpdateLiftStatus(ls liftStatus) error {
+func (f *fsm) UpdateLiftStatus(ls LiftStatus) error {
 	// Make sure the node currently hold leadership.
 	if f.raft.State() != raft.Leader {
 		f.logger.Printf("[WARN] Unable to update lift status. Not currently leader.\n")
@@ -331,4 +264,86 @@ func (f *fsm) UpdateButtonStatus(bsu ButtonStatusUpdate) error {
 	future := f.raft.Apply(b, 5*time.Second)
 	return future.Error()
 
+}
+
+// Internal fsm-function
+// 	These are functions called by the raft apply command in order to recreate
+//	the store based on the raft-log. Functins here are called by the
+//	Apply()-command, and should not be called directly.
+// =============================================================================
+
+// command defines actions that the raft.Log contain, and a series of
+// commands should be able to recreate the State.
+type command struct {
+	/*
+		Types:
+		- "updateFloor": key=<Don't Care>   Value=<floors int>
+		- "nodeUpdate":  key=<ip:raftport>  Value=<struct{ID string, LastFloor, Destination uint}>
+		- "btnUpUpdate": key=<floor>        Value=<struct{AssignedTo, LastStatus string, LastChange time.Time}>
+		- "btnDownUpdate": key=<floor>      Value=<struct{AssignedTo, LastStatus string, LastChange time.Time}>
+	*/
+	Type  string `json:"type,omitempty"`
+	Key   string `json:"key,omitempty"`
+	Value []byte `json:"value,omitempty"`
+}
+
+func (f *fsm) applyUpdateFloor(floor interface{}) interface{} {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	floorInt, _ := floor.(uint)
+	// TODO: Implement test for the floorInt
+	// if !ok {
+	// 	f.logger.Printf("[ERROR] Unable to apply floorUpdate. Bad floor: %v\n", floor)
+	// 	return nil
+	// }
+	f.state.Floors = floorInt
+	return nil
+}
+
+func (f *fsm) applyNodeUpdate(nodeID string, e []byte) interface{} {
+	// Unmarshal liftstatus
+	var lift LiftStatus
+	err := json.Unmarshal(e, &lift)
+	if err != nil {
+		f.logger.Printf("[ERROR] Unable to unmarhal liftStatus: %s\n", err.Error())
+		return fmt.Errorf("unable to unmarshal liftstats")
+	}
+
+	// Update the actual datastore entry
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.state.Nodes[nodeID] = lift
+	return nil
+}
+
+func (f *fsm) applyBtnUpUpdate(floor string, b []byte) interface{} {
+	// Unmarshal ButtonStatusUpdate
+	var status Status
+	err := json.Unmarshal(b, &status)
+	if err != nil {
+		f.logger.Printf("[ERROR] Unable to unmarshal status: %s\n", err.Error())
+		return fmt.Errorf("unable to unmarshal ButtonUpStatusUpdate: %s", err.Error())
+	}
+
+	// Update the actual datastore entry
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.state.HallUpButtons[floor] = status
+	return nil
+}
+
+func (f *fsm) applyBtnDownUpdate(floor string, b []byte) interface{} {
+	// Unmarshal ButtonStatusUpdate
+	var status Status
+	err := json.Unmarshal(b, &status)
+	if err != nil {
+		f.logger.Printf("[ERROR] Unable to unmarshal status: %s\n", err.Error())
+		return fmt.Errorf("unable to unmarshal ButtonDownStatusUpdate: %s", err.Error())
+	}
+
+	// Update the actual datastore entry
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.state.HallDownButtons[floor] = status
+	return nil
 }

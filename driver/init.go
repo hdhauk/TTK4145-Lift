@@ -44,8 +44,6 @@ func Init(c Config) error {
 	// Spawn workers
 	go btnScan(btnPressCh)
 	go floorDetect(floorDetectCh)
-	// TODO: What workers do we need here ¯\_(ツ)_/¯
-	//go eventHandler(btnPressCh, floorDetectCh)
 	go btnPressHandler(btnPressCh)
 	go floorDetectHandler(floorDetectCh, apFloorCh)
 	go autoPilot(apFloorCh)

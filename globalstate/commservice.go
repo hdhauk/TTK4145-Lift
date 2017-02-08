@@ -11,6 +11,9 @@ import (
 )
 
 // StoreInterface is the interface Raft-backed key-value stores must implement.
+// The communication service is implmeneted with this interface instead of the
+// actual store-type to limit access to private datamembers, and clearify which
+// functions that is in use.
 type StoreInterface interface {
 	// Join joins the node, reachable at addr, to the cluster.
 	Join(addr string) error
@@ -18,10 +21,10 @@ type StoreInterface interface {
 	// GetLeader returns the address of the current cluster leader
 	GetLeader() string
 
-	// GetStatus TODO
+	// GetStatus returns the current
 	GetStatus() uint32
 
-	UpdateLiftStatus(ls liftStatus) error
+	UpdateLiftStatus(ls LiftStatus) error
 	UpdateButtonStatus(bsu ButtonStatusUpdate) error
 }
 
@@ -40,6 +43,7 @@ func newCommService(addr string, store StoreInterface) *service {
 	}
 }
 
+// Start starts the communication service and start listening.
 func (s *service) Start() error {
 	server := http.Server{
 		Handler: s,
@@ -65,7 +69,7 @@ func (s *service) Start() error {
 	return nil
 }
 
-// close closes the service.
+// Close closes the service.
 func (s *service) Close() {
 	s.ln.Close()
 	return
@@ -92,7 +96,7 @@ func (s *service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // Endpoint handlers
-//==============================================================================
+// =============================================================================
 func (s *service) HandleJoin(w http.ResponseWriter, r *http.Request) {
 	// Redirect if not currently leader
 	if s.store.GetStatus() != 2 {
@@ -155,7 +159,7 @@ func (s *service) HandleLiftUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Unmarshal json object
-	var status liftStatus
+	var status LiftStatus
 	err := json.NewDecoder(r.Body).Decode(&status)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
