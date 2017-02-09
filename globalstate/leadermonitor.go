@@ -1,7 +1,12 @@
 package globalstate
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"os"
 	"strconv"
 	"time"
 
@@ -13,10 +18,19 @@ func (f *fsm) LeaderMonitor() {
 	orderTimeout := 7 * time.Second
 	leaderCh := f.raft.LeaderCh()
 	isLeader := f.raft.State() == raft.Leader
+
+	// Check inital role and invoke corresponding callback
+	if isLeader {
+		f.config.OnPromotion()
+	} else {
+		f.config.OnDemotion()
+	}
+
 	for {
 		if !isLeader {
 			// Blocks until assuming leadership
 			isLeader = <-leaderCh
+			f.config.OnPromotion()
 		}
 
 		// Wait for either loosing leadership or a interval
@@ -24,9 +38,7 @@ func (f *fsm) LeaderMonitor() {
 		case l := <-leaderCh:
 			isLeader = l
 			// Call status change callbacks
-			if isLeader {
-				f.config.OnPromotion()
-			} else {
+			if !isLeader {
 				f.config.OnDemotion()
 			}
 
@@ -42,15 +54,21 @@ func (f *fsm) LeaderMonitor() {
 		unassignedBtns := getUnassignedOrders(state)
 		expiredBtns := getTimedOutOrders(state, orderTimeout)
 
-		fmt.Printf("Unnassigned buttons: %+v\n", unassignedBtns)
-		fmt.Printf("Expired buttons: %+v\n", expiredBtns)
+		for _, b := range unassignedBtns {
+			lowestCostPeer := f.config.CostFunction(state, b.Floor, b.Dir)
+			sendCmd(b, lowestCostPeer)
+		}
+		for _, b := range expiredBtns {
+			lowestCostPeer := f.config.CostFunction(state, b.Floor, b.Dir)
+			sendCmd(b, lowestCostPeer)
+		}
 
 	}
 }
 
 type btn struct {
-	floor int
-	dir   string
+	Floor int
+	Dir   string
 }
 
 func getUnassignedOrders(s State) []btn {
@@ -59,7 +77,7 @@ func getUnassignedOrders(s State) []btn {
 	for k, v := range s.HallDownButtons {
 		if v.LastStatus == BtnStateUnassigned {
 			f, _ := strconv.Atoi(k)
-			btns = append(btns, btn{floor: f, dir: "down"})
+			btns = append(btns, btn{Floor: f, Dir: "down"})
 		}
 	}
 
@@ -67,7 +85,7 @@ func getUnassignedOrders(s State) []btn {
 	for k, v := range s.HallUpButtons {
 		if v.LastStatus == BtnStateUnassigned {
 			f, _ := strconv.Atoi(k)
-			btns = append(btns, btn{floor: f, dir: "up"})
+			btns = append(btns, btn{Floor: f, Dir: "up"})
 		}
 	}
 
@@ -82,7 +100,7 @@ func getTimedOutOrders(s State, timeout time.Duration) []btn {
 		if v.LastStatus == BtnStateAssigned &&
 			time.Since(v.LastChange) > timeout {
 			f, _ := strconv.Atoi(k)
-			btns = append(btns, btn{floor: f, dir: "down"})
+			btns = append(btns, btn{Floor: f, Dir: "down"})
 		}
 	}
 
@@ -91,8 +109,20 @@ func getTimedOutOrders(s State, timeout time.Duration) []btn {
 		if v.LastStatus == BtnStateAssigned &&
 			time.Since(v.LastChange) > timeout {
 			f, _ := strconv.Atoi(k)
-			btns = append(btns, btn{floor: f, dir: "up"})
+			btns = append(btns, btn{Floor: f, Dir: "up"})
 		}
 	}
 	return btns
+}
+
+func sendCmd(b btn, dstNode string) error {
+	// Marhsal to json
+	buf := new(bytes.Buffer)
+	json.NewEncoder(buf).Encode(b)
+	res, err := http.Post(fmt.Sprintf("http://%s/cmd", dstNode), "application/json; charset=utf-8", buf)
+	if err != nil {
+		return err
+	}
+	io.Copy(os.Stdout, res.Body)
+	return nil
 }

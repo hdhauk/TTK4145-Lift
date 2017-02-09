@@ -45,7 +45,7 @@ func newFSM(rPortStr string) *fsm {
 	return &fsm{
 		RaftPort: rPortStr,
 		state:    s,
-		logger:   log.New(os.Stderr, "[globalstore] ", log.Ltime|log.Lshortfile),
+		logger:   log.New(os.Stderr, "[globalstate] ", log.Ltime|log.Lshortfile),
 	}
 }
 

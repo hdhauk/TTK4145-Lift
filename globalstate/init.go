@@ -28,6 +28,7 @@ func Init(cfg Config) error {
 	// Set up FSM
 	theFSM = newFSM(rPortStr)
 	theFSM.ownID = cfg.OwnIP + ":" + rPortStr
+	theFSM.logger = cfg.Logger
 	theFSM.config = cfg
 
 	// Set up storage for FSM
@@ -71,20 +72,26 @@ func Init(cfg Config) error {
 	return nil
 }
 
-func join(joinAddr, raftAddr, ownIP string, logger *log.Logger) error {
+func join(initialPeer, raftAddr, ownIP string, logger *log.Logger) error {
+	// Marshal join request
 	b, err := json.Marshal(map[string]string{"addr": raftAddr})
 	if err != nil {
 		return err
 	}
 
+	// Infer communication port from RaftPort (comport is always one above!)
+	parts := strings.Split(initialPeer, ":")
+	port, _ := strconv.Atoi(parts[1])
+	initialPeer = fmt.Sprintf("%s:%d", parts[0], port+1)
+
 	// HACK: For some reason go struggles to make request to localhost if you
 	// try to connect to the actual interface address.
-	if strings.Contains(joinAddr, ownIP) {
-		parts := strings.Split(joinAddr, ":")
-		joinAddr = "127.0.0.1:" + parts[1]
+	if strings.Contains(initialPeer, ownIP) {
+		parts := strings.Split(initialPeer, ":")
+		initialPeer = "127.0.0.1:" + parts[1]
 	}
 
-	url := fmt.Sprintf("http://%s/join", joinAddr)
+	url := fmt.Sprintf("http://%s/join", initialPeer)
 	logger.Printf("[INFO] Attempting to join %v", url)
 	resp, err := http.Post(url, "application-type/json", bytes.NewReader(b))
 	if err != nil {

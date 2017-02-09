@@ -88,7 +88,7 @@ func (s *service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	} else if strings.HasPrefix(p, "/update/button") {
 		s.HandleButtonUpdate(w, r)
 	} else if strings.HasPrefix(p, "/cmd") {
-		// Handle incomming command
+		s.HandleCmd(w, r)
 	} else {
 		w.WriteHeader(http.StatusNotFound)
 		log.Printf("not found: someone tried to access %v", p)
@@ -102,7 +102,13 @@ func (s *service) HandleJoin(w http.ResponseWriter, r *http.Request) {
 	if s.store.GetStatus() != 2 {
 		// Infer commport from the raft-port. The communication port should always
 		// be one above the raft port.
-		parts := strings.Split(s.store.GetLeader(), ":")
+		leader := s.store.GetLeader()
+		if leader == "" {
+			theFSM.logger.Println("[WARN] No current leader. Cannot redirect")
+			w.WriteHeader(http.StatusGone)
+			return
+		}
+		parts := strings.Split(leader, ":")
 		raftPortInt, _ := strconv.Atoi(parts[1])
 		portStr := strconv.Itoa(raftPortInt + 1)
 
@@ -143,12 +149,27 @@ func (s *service) HandleJoin(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func (s *service) HandleKick(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("HandlerKick is not yet implemented")
-}
-
 func (s *service) HandleCmd(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("HandleCmd not implemented yet.")
+	// Check for empty reqest
+	if r.Body == nil {
+		http.Error(w, "No request body provided", http.StatusBadRequest)
+		return
+	}
+
+	// Unmarshal json object (identical to btn-struct in LeaderMonitor
+	// but redeclared here for your convenience ;)
+	var btn = struct {
+		Floor int
+		Dir   string
+	}{}
+
+	err := json.NewDecoder(r.Body).Decode(&btn)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	theFSM.config.OnIncomingCommand(btn.Floor, btn.Dir)
 }
 
 func (s *service) HandleLiftUpdate(w http.ResponseWriter, r *http.Request) {
@@ -195,4 +216,8 @@ func (s *service) HandleButtonUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 	theFSM.logger.Printf("[INFO] Successfully accepted button status update.")
 	w.WriteHeader(http.StatusOK)
+}
+
+func (s *service) HandleKick(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("HandlerKick is not yet implemented")
 }
