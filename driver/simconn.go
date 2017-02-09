@@ -28,7 +28,7 @@ func initSim(simPort string) {
 
 	// Closing initDone channel to signal to all other gorotines that they now may
 	// enter their for-loops
-	close(initDone)
+	close(liftConnDone)
 	for {
 		select {
 		case cmd := <-txWithResp:

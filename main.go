@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"time"
 
+	"bitbucket.org/halvor_haukvik/ttk4145-elevator/driver"
 	"bitbucket.org/halvor_haukvik/ttk4145-elevator/globalstate"
 	"bitbucket.org/halvor_haukvik/ttk4145-elevator/peerdiscovery"
 )
@@ -28,12 +29,13 @@ var r = 1024 + rand.Intn(64510)
 var raftPort = r
 
 func main() {
+	mainlogger := log.New(os.Stderr, "[main] ", log.Ltime|log.Lshortfile)
 	// Parse arg flags
 	flag.StringVar(&nick, "nick", strconv.Itoa(os.Getpid()), "Nickname of this peer. Default is the process id (PID)")
 	flag.StringVar(&simPort, "sim", "", "Listening port of the simulator")
 	flag.IntVar(&raftPort, "raft", raftPort, "Communication port for raft")
 	flag.Parse()
-	fmt.Printf("raftPort: %d, nick=%s\n", raftPort, nick)
+	fmt.Printf("raftPort: %d, nick=%s, simulator=%s\n", raftPort, nick, simPort)
 
 	// Initialize peer discovery
 	peers := make(map[string]peerdiscovery.Peer)
@@ -42,47 +44,47 @@ func main() {
 		RaftPort:          raftPort,
 		BroadcastPort:     33324,
 		OnNewPeer:         func(p peerdiscovery.Peer) { peers[p.Nick+":"+p.IP] = p },
-		OnLostPeer:        func(p peerdiscovery.Peer) { fmt.Printf("Lost peer: %+v\n", p) },
+		OnLostPeer:        onLostPeer,
 		BroadcastInterval: 15 * time.Millisecond,
 		Timeout:           50 * time.Millisecond,
 		Logger:            log.New(os.Stderr, "[peerdiscovery] ", log.Ltime|log.Lshortfile),
 	}
 	go peerdiscovery.Start(discoveryConfig)
-	time.Sleep(1 * time.Second)
+	time.Sleep(2 * discoveryConfig.BroadcastInterval)
 
 	// Initialize driver
-	// cfg := driver.Config{
-	// 	SimMode: true,
-	// 	SimPort: "53566",
-	// 	Floors:  4,
-	// 	OnBtnPress: func(b driver.Btn) {
-	// 		driver.BtnLEDSet(b)
-	// 		time.Sleep(5 * time.Second)
-	// 		driver.BtnLEDClear(b)
-	// 	},
-	// }
-	// go driver.Init(cfg)
+	cfg := driver.Config{
+		SimMode:    true,
+		SimPort:    simPort,
+		Floors:     4,
+		OnBtnPress: onBtnPress,
+		Logger:     log.New(os.Stderr, "[driver] ", log.Ltime|log.Lshortfile),
+	}
+	driverInitDone := make(chan struct{})
+	go driver.Init(cfg, driverInitDone)
+	mainlogger.Println("[INFO] Waiting for driver to initialize")
+	<-driverInitDone
+	mainlogger.Println("[INFO] Driver ready")
 
 	// Initalize globalstate
 	ip, _ := peerdiscovery.GetLocalIP()
 	globalstateConfig := globalstate.Config{
-		RaftPort:    raftPort,
-		OwnIP:       ip,
-		OnPromotion: func() { fmt.Println("PROMOTED YAY!") },
-		OnDemotion:  func() { fmt.Println("DEMOTED, :(") },
-		OnIncomingCommand: func(f int, dir string) {
-			fmt.Printf("Supposed to go to floor %d, somebody want %s from there\n", f, dir)
-		},
-		CostFunction: func(s globalstate.State, f int, d string) string { return "localhost:8003" },
-		Logger:       log.New(os.Stderr, "[globalstate] ", log.Ltime|log.Lshortfile),
+		RaftPort:          raftPort,
+		OwnIP:             ip,
+		OnPromotion:       func() {},
+		OnDemotion:        func() { fmt.Println("DEMOTED, :(") },
+		OnIncomingCommand: onIncommingCommand,
+		CostFunction:      func(s globalstate.State, f int, d string) string { return "localhost:8003" },
+		Logger:            log.New(os.Stderr, "[globalstate] ", log.Ltime|log.Lshortfile),
 	}
 
+	// Pass any known peers
 	if len(peers) == 0 {
 		go globalstate.Init(globalstateConfig)
 	} else {
 		for _, anyPeer := range peers {
 			globalstateConfig.InitalPeer = anyPeer.IP + ":" + anyPeer.RaftPort
-			log.Printf("Identified raft. Starting global state with connection to: %s\n", globalstateConfig.InitalPeer)
+			mainlogger.Printf("Identified raft. Starting global state with connection to: %s\n", globalstateConfig.InitalPeer)
 			go globalstate.Init(globalstateConfig)
 			break
 		}
@@ -117,7 +119,6 @@ func peerName(id string) string {
 	}
 	localIP, err := peerdiscovery.GetLocalIP()
 	if err != nil {
-		logger.Warning("Not connected to the internet.")
 		localIP = "DISCONNECTED"
 	}
 	return fmt.Sprintf("%s:%s", id, localIP)

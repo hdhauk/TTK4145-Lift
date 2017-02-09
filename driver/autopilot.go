@@ -3,11 +3,12 @@ package driver
 import "time"
 
 const (
-	red   = "\x1b[31;1m"
-	white = "\x1b[0m"
+	red    = "\x1b[31;1m"
+	white  = "\x1b[0m"
+	yellow = "\x1b[33;1m"
 )
 
-func autoPilot(apFloorCh <-chan int) {
+func autoPilot(apFloorCh <-chan int, driverInitDone chan struct{}) {
 	// lastFloor := 0
 	// dstFloor := 0
 	currentDir := stop
@@ -16,7 +17,7 @@ func autoPilot(apFloorCh <-chan int) {
 		currentDir = dir
 	}
 
-	<-initDone
+	<-liftConnDone
 
 	// Drive up to a well defined floor
 	var lastFloor, dstFloor int
@@ -31,7 +32,8 @@ func autoPilot(apFloorCh <-chan int) {
 		currentDir = stop
 		dstFloor = lastFloor
 	}
-	cfg.Logger.Printf("autopilot started with elevator stationary in floor: %v\n", lastFloor)
+	cfg.Logger.Printf("[INFO] Ready with elevator stationary in floor: %v\n", lastFloor)
+	close(driverInitDone)
 
 	// Start autopilot service
 	for {
@@ -47,12 +49,13 @@ func autoPilot(apFloorCh <-chan int) {
 						-> Make sure the target destination is floorDstChin the direction of travel
 						-> If everything is OK carry on
 			*/
-			cfg.Logger.Printf("autopilot.go: At floor: %v\t dstFloor: %v\n", f, dstFloor)
+			cfg.Logger.Printf("[INFO] At floor: %v\t dstFloor: %v\n", f, dstFloor)
 
 			// Case 1
 			if f == dstFloor {
 				driver.setMotorDir(stop)
 				setCurrentDir(stop)
+				cfg.OnDstReached(f)
 				//openDoor()
 				break selector
 			}
@@ -60,7 +63,7 @@ func autoPilot(apFloorCh <-chan int) {
 			// Case 2
 			if dirToDst(f, dstFloor) != currentDir {
 				newDir := dirToDst(lastFloor, dstFloor)
-				cfg.Logger.Printf(red+"Unexpected direction value. Correcting to: %s"+white, newDir)
+				cfg.Logger.Printf(yellow+"[WARN] Unexpected direction value. Correcting to: %s"+white, newDir)
 				driver.setMotorDir(newDir)
 				setCurrentDir(newDir)
 			}
@@ -80,8 +83,8 @@ func autoPilot(apFloorCh <-chan int) {
 				switch currentDir {
 				// Case 1
 				case stop:
-					cfg.Logger.Printf("autopilot.go: New destination given (%v). Case 1: Stopping...\n", dst)
-					//openDoor()
+					cfg.Logger.Printf("[INFO] New destination given (%v). Case 1: Stopping...and opening door.\n", dst)
+					cfg.OnDstReached(lastFloor)
 					break selector
 				// Case 2a
 				case up:

@@ -67,9 +67,9 @@ type Btn struct {
 func (bt *BtnType) String() string {
 	switch *bt {
 	case HallUp:
-		return "HallUp"
+		return "up"
 	case HallDown:
-		return "HallDown"
+		return "down"
 	case Cab:
 		return "Cab"
 	}

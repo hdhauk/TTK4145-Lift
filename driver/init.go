@@ -8,7 +8,7 @@ import (
 )
 
 // Package global channels
-var initDone chan bool
+var liftConnDone chan bool
 var floorDstCh chan int
 var btnPressCh chan Btn
 var floorDetectCh chan int
@@ -16,7 +16,7 @@ var apFloorCh chan int
 
 // Init intializes the driver, and return an error if unable to connect to
 // the driver or the simulator.
-func Init(c Config) error {
+func Init(c Config, done chan struct{}) error {
 	// Set configuration
 	if err := setConfig(c); err != nil {
 		cfg.Logger.Printf("Failed to set driver configuration: %v", err)
@@ -35,7 +35,7 @@ func Init(c Config) error {
 	}
 
 	// Initialize channels
-	initDone = make(chan bool)
+	liftConnDone = make(chan bool)
 	btnPressCh = make(chan Btn, 4)
 	floorDetectCh = make(chan int)
 	apFloorCh = make(chan int)
@@ -46,7 +46,7 @@ func Init(c Config) error {
 	go floorDetect(floorDetectCh)
 	go btnPressHandler(btnPressCh)
 	go floorDetectHandler(floorDetectCh, apFloorCh)
-	go autoPilot(apFloorCh)
+	go autoPilot(apFloorCh, done)
 	go driver.init(cfg.SimPort)
 
 	// Block until stack unwind
@@ -67,7 +67,8 @@ var cfg = Config{
 	OnBtnPress: func(b Btn) {
 		fmt.Printf("onBtnPress callback not set! Type: %v, Floor: %v\n", b.Type, b.Floor)
 	},
-	Logger: log.New(os.Stdout, "driver-default-debugger:", log.Lshortfile|log.Ltime),
+	OnDstReached: func(f int) { fmt.Printf("OnDstReached callback not set! Floor: %v\n", f) },
+	Logger:       log.New(os.Stdout, "driver-default-debugger:", log.Lshortfile|log.Ltime),
 }
 
 // Config defines the properties of the elevator and callbacks to the following events
@@ -80,6 +81,7 @@ type Config struct {
 	Floors         int
 	OnFloorDetect  func(floor int)
 	OnNewDirection func(direction string)
+	OnDstReached   func(floor int)
 	OnBtnPress     func(b Btn)
 	Logger         *log.Logger
 }
@@ -104,13 +106,21 @@ var driver = struct {
 
 // Config helper functions
 func setConfig(c Config) error {
+	if c.Logger != nil {
+		cfg.Logger = c.Logger
+	}
+
+	// Set simulator port
 	if c.SimMode {
 		if err := validatePort(c.SimPort); err != nil {
 			return err
 		}
 	}
+	cfg.SimPort = c.SimPort
+
+	// Set floornumber
 	if c.Floors < 0 {
-		cfg.Logger.Printf("negative nu,ber of floos, (%v) not supported\n", c.Floors)
+		cfg.Logger.Printf("negative number of floors (%v) not supported\n", c.Floors)
 		return fmt.Errorf("negative number of floors (%v) not supported", c.Floors)
 	}
 
