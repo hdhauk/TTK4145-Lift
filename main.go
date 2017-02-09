@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"math/rand"
 	"os"
 	"strconv"
@@ -24,33 +25,29 @@ var simPort string
 
 // Pick ports randomly
 var r = 1024 + rand.Intn(64510)
-var raftPort = strconv.Itoa(r)
-var commPort = strconv.Itoa(r + 1)
+var raftPort = r
 
 func main() {
-	fmt.Printf("raftPort: %s, joinPort: %s\n", raftPort, commPort)
-	initLogger()
 	// Parse arg flags
-	flag.StringVar(&nick, "nick", "", "Nickname of this peer")
+	flag.StringVar(&nick, "nick", strconv.Itoa(os.Getpid()), "Nickname of this peer. Default is the process id (PID)")
 	flag.StringVar(&simPort, "sim", "", "Listening port of the simulator")
-
+	flag.IntVar(&raftPort, "raft", raftPort, "Communication port for raft")
 	flag.Parse()
-	if simPort != "" {
-		logger.Notice("Starting in simulator mode.")
-	}
-	var ownID = struct {
-		ID   string
-		Nick string
-	}{
-		ID: makeUUID(), Nick: peerName(nick),
-	}
+	fmt.Printf("raftPort: %d, nick=%s\n", raftPort, nick)
 
 	// Initialize peer discovery
 	peers := make(map[string]peerdiscovery.Peer)
-	// peerCh := make(chan string)
-	go peerdiscovery.Start(33324, ownID.Nick, commPort, raftPort, func(p peerdiscovery.Peer) {
-		peers[p.Nick+"@"+p.IP] = p
-	})
+	discoveryConfig := peerdiscovery.Config{
+		Nick:              nick,
+		RaftPort:          raftPort,
+		BroadcastPort:     33324,
+		OnNewPeer:         func(p peerdiscovery.Peer) { peers[p.Nick+":"+p.IP] = p },
+		OnLostPeer:        func(p peerdiscovery.Peer) { fmt.Printf("Lost peer: %+v\n", p) },
+		BroadcastInterval: 15 * time.Millisecond,
+		Timeout:           50 * time.Millisecond,
+		Logger:            log.New(os.Stderr, "[peerdiscovery] ", log.Ltime|log.Lshortfile),
+	}
+	go peerdiscovery.Start(discoveryConfig)
 	time.Sleep(1 * time.Second)
 
 	// Initialize driver
@@ -68,20 +65,25 @@ func main() {
 
 	// Initalize globalstate
 	ip, _ := peerdiscovery.GetLocalIP()
-	gsCfg := globalstate.Config{
-		RaftPort:    r,
+	globalstateConfig := globalstate.Config{
+		RaftPort:    raftPort,
 		OwnIP:       ip,
 		OnPromotion: func() { fmt.Println("PROMOTED YAY!") },
 		OnDemotion:  func() { fmt.Println("DEMOTED, :(") },
+		OnIncomingCommand: func(f int, dir string) {
+			fmt.Printf("Supposed to go to floor %d, somebody want %s from there\n", f, dir)
+		},
+		CostFunction: func(s globalstate.State, f int, d string) string { return "localhost:8003" },
+		Logger:       log.New(os.Stderr, "[globalstate] ", log.Ltime|log.Lshortfile),
 	}
 
 	if len(peers) == 0 {
-		go globalstate.Init(gsCfg)
+		go globalstate.Init(globalstateConfig)
 	} else {
 		for _, anyPeer := range peers {
-			logger.Noticef("Identified raft. Starting global state with connection to: %s\n", anyPeer.IP+":"+anyPeer.JoinPort)
-			gsCfg.InitalPeer = anyPeer.IP + ":" + anyPeer.JoinPort
-			go globalstate.Init(gsCfg)
+			globalstateConfig.InitalPeer = anyPeer.IP + ":" + anyPeer.RaftPort
+			log.Printf("Identified raft. Starting global state with connection to: %s\n", globalstateConfig.InitalPeer)
+			go globalstate.Init(globalstateConfig)
 			break
 		}
 	}
@@ -90,14 +92,14 @@ func main() {
 	status := globalstate.LiftStatusUpdate{
 		Floor: 1,
 		Dst:   2,
-		Dir:   "DOWN",
+		Dir:   "down",
 	}
 	globalstate.UpdateLiftStatus(status)
 
 	bsu := globalstate.ButtonStatusUpdate{
-		Floor:  2,
+		Floor:  3,
 		Dir:    "down",
-		Status: globalstate.BtnStateAssigned,
+		Status: globalstate.BtnStateUnassigned,
 	}
 	globalstate.UpdateButtonStatus(bsu)
 
@@ -118,5 +120,5 @@ func peerName(id string) string {
 		logger.Warning("Not connected to the internet.")
 		localIP = "DISCONNECTED"
 	}
-	return fmt.Sprintf("%s@%s", id, localIP)
+	return fmt.Sprintf("%s:%s", id, localIP)
 }

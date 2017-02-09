@@ -6,6 +6,7 @@ package peerdiscovery
 
 import (
 	"fmt"
+	"log"
 	"net"
 	"strings"
 	"time"
@@ -32,17 +33,35 @@ func (p *Peer) Copy() Peer {
 	return new
 }
 
-const interval = 15 * time.Millisecond
-const timeout = 50 * time.Millisecond
+// Config defines all nessesary configuration parameters
+type Config struct {
+	Nick              string
+	RaftPort          int
+	BroadcastPort     int
+	OnNewPeer         func(Peer)
+	OnLostPeer        func(Peer)
+	BroadcastInterval time.Duration
+	Timeout           time.Duration
+	Logger            *log.Logger
+}
 
 // broadcastHeartBeats broadcast the supplied id every 15ms
-func broadcastHeartBeats(port int, id string) {
-	conn := dialBroadcastUDP(port)
-	addr, _ := net.ResolveUDPAddr("udp4", fmt.Sprintf("255.255.255.255:%d", port))
+func broadcastHeartBeats(c Config) {
+	conn := dialBroadcastUDP(c.BroadcastPort)
+	addr, _ := net.ResolveUDPAddr("udp4", fmt.Sprintf("255.255.255.255:%d", c.BroadcastPort))
+
+	// Resolve own IP-address
+	ip, err := GetLocalIP()
+	if err != nil {
+		c.Logger.Printf("[ERROR] Unable to resolve own IP. Check internet connection")
+	}
+
+	// Create broadcast message: "nick"@"ip-address":"raft-port"
+	id := fmt.Sprintf("%s@%s:%d", c.Nick, ip, c.RaftPort)
 
 	for {
 		select {
-		case <-time.After(interval):
+		case <-time.After(c.BroadcastInterval):
 		}
 		conn.WriteTo([]byte(id), addr)
 	}
@@ -50,17 +69,22 @@ func broadcastHeartBeats(port int, id string) {
 
 // Start initiate listening for other peers while also start broadcasting
 // to others. The `id`-field in the callbacks have the form:
-//	peerName@xxx.xxx.xxx.xxx
+//	"nick"@"ip-address":"raft-port"
 // where the latter part is the IPv4 adress of the peer.
-func Start(port int, ownID, joinPort, raftPort string, onNewPeer func(peer Peer)) {
-	var buf [1024]byte
+func Start(c Config) {
+	// Set up storage for peers we discover
 	peers := make(map[string]*Peer)
-	conn := dialBroadcastUDP(port)
 
-	go broadcastHeartBeats(port, fmt.Sprintf("%s@%s@%s", ownID, joinPort, raftPort))
+	// Bind the socket
+	conn := dialBroadcastUDP(c.BroadcastPort)
 
+	// Start broadcasting
+	go broadcastHeartBeats(c)
+
+	// Start listening for others broadcasts
+	var buf [1024]byte
 	for {
-		conn.SetReadDeadline(time.Now().Add(interval))
+		conn.SetReadDeadline(time.Now().Add(c.BroadcastInterval))
 
 		// Although it is considered BAD go-code to throw away the error as we do
 		// here the ReadFrom function will constantly yield non-nil error value
@@ -68,10 +92,10 @@ func Start(port int, ownID, joinPort, raftPort string, onNewPeer func(peer Peer)
 		// n is empty further down.
 		n, _, _ := conn.ReadFrom(buf[0:])
 
-		id := string(buf[:n]) // Either "" or on the form: "peerName@xxx.xxx.xxx.xxx"
+		id := string(buf[:n]) // Either "" or on the form: nick"@"ip-address":"raft-port"
 
 		// Stop function from triggering on own heartbeats
-		if strings.Contains(id, ownID) {
+		if strings.Contains(id, c.Nick) {
 			continue
 		}
 
@@ -79,16 +103,16 @@ func Start(port int, ownID, joinPort, raftPort string, onNewPeer func(peer Peer)
 		if id != "" {
 			if _, idExists := peers[id]; !idExists {
 				// Previusly unknown host
-				s := strings.Split(id, "@")
+				parts := strings.Split(id, "@")
+				ipv4parts := strings.Split(parts[1], ":")
 				peers[id] = &Peer{
-					IP:        s[1],
-					Nick:      s[0],
-					JoinPort:  s[2],
-					RaftPort:  s[3],
+					IP:        ipv4parts[0],
+					Nick:      parts[0],
+					RaftPort:  ipv4parts[1],
 					firstSeen: time.Now(),
 					lastSeen:  time.Now(),
 				}
-				onNewPeer(peers[id].Copy())
+				c.OnNewPeer(peers[id].Copy())
 			}
 			peers[id].lastSeen = time.Now()
 		}
