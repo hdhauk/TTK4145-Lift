@@ -8,19 +8,20 @@ import (
 )
 
 // Package global channels
-var liftConnDone chan bool
+var liftConnDoneCh chan bool
 var floorDstCh chan int
 var btnPressCh chan Btn
 var floorDetectCh chan int
 var apFloorCh chan int
 
-// Init intializes the driver, and return an error if unable to connect to
-// the driver or the simulator.
-func Init(c Config, done chan struct{}) error {
+// Init intializes the driver, and return an error on the done-channel
+// if unable to initialize the driver
+func Init(c Config, done chan error) {
 	// Set configuration
 	if err := setConfig(c); err != nil {
 		cfg.Logger.Printf("Failed to set driver configuration: %v", err)
-		return err
+		done <- err
+		return
 	}
 
 	// Assign either hardware or simulator functions to driver handle
@@ -35,7 +36,7 @@ func Init(c Config, done chan struct{}) error {
 	}
 
 	// Initialize channels
-	liftConnDone = make(chan bool)
+	liftConnDoneCh = make(chan bool)
 	btnPressCh = make(chan Btn, 4)
 	floorDetectCh = make(chan int)
 	apFloorCh = make(chan int)
@@ -53,7 +54,7 @@ func Init(c Config, done chan struct{}) error {
 	select {}
 }
 
-// Default config
+// Default config (may be partially or completely overwritten)
 var cfg = Config{
 	SimMode: true,
 	SimPort: "53566",
@@ -71,10 +72,7 @@ var cfg = Config{
 	Logger:       log.New(os.Stdout, "driver-default-debugger:", log.Lshortfile|log.Ltime),
 }
 
-// Config defines the properties of the elevator and callbacks to the following events
-//  * OnFloorDetect - The elevator just reached a floor. May or may not stop there.
-//  * OnNewDirection - The elevator either stopped or started moving in either direction.
-//  * OnBtnPress - A button have been depressed.
+// Config defines the configuration for the driver.
 type Config struct {
 	SimMode        bool
 	SimPort        string
@@ -104,7 +102,7 @@ var driver = struct {
 	readFloor:    readFloorSim,
 }
 
-// Config helper functions
+// Update the default config with supplied values
 func setConfig(c Config) error {
 	if c.Logger != nil {
 		cfg.Logger = c.Logger

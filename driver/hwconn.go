@@ -7,7 +7,7 @@ func initHW(port string) {
 	if ioInit() != nil {
 		cfg.Logger.Fatalln("Failed to connect to the elvator. Make sure everything is turned on and try again!")
 	}
-	close(liftConnDone)
+	close(liftConnDoneCh)
 	cfg.Logger.Println("hardware initalization complete")
 }
 

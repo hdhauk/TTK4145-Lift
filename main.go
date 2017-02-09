@@ -14,12 +14,6 @@ import (
 	"bitbucket.org/halvor_haukvik/ttk4145-elevator/peerdiscovery"
 )
 
-// Command line defaults
-const (
-	defaultJoinPort = ":11000"
-	defaultRaftPort = ":12000"
-)
-
 // Command line parameters
 var nick string
 var simPort string
@@ -60,11 +54,13 @@ func main() {
 		OnBtnPress: onBtnPress,
 		Logger:     log.New(os.Stderr, "[driver] ", log.Ltime|log.Lshortfile),
 	}
-	driverInitDone := make(chan struct{})
+	driverInitDone := make(chan error)
 	go driver.Init(cfg, driverInitDone)
-	mainlogger.Println("[INFO] Waiting for driver to initialize")
-	<-driverInitDone
-	mainlogger.Println("[INFO] Driver ready")
+	err := <-driverInitDone
+	if err != nil {
+		mainlogger.Fatalf("[ERROR] Failed to initalize driver: %v", err)
+	}
+	mainlogger.Println("[INFO] Driver successfully initialized")
 
 	// Initalize globalstate
 	ip, _ := peerdiscovery.GetLocalIP()
@@ -90,36 +86,6 @@ func main() {
 		}
 	}
 
-	time.Sleep(5 * time.Second)
-	status := globalstate.LiftStatusUpdate{
-		Floor: 1,
-		Dst:   2,
-		Dir:   "down",
-	}
-	globalstate.UpdateLiftStatus(status)
-
-	bsu := globalstate.ButtonStatusUpdate{
-		Floor:  3,
-		Dir:    "down",
-		Status: globalstate.BtnStateUnassigned,
-	}
-	globalstate.UpdateButtonStatus(bsu)
-
-	time.Sleep(10 * time.Second)
-	temp, _ := globalstate.GetState()
-	fmt.Printf("%+v", temp)
-
+	// Block forever
 	select {}
-
-}
-
-func peerName(id string) string {
-	if id == "" {
-		id = strconv.Itoa(os.Getpid())
-	}
-	localIP, err := peerdiscovery.GetLocalIP()
-	if err != nil {
-		localIP = "DISCONNECTED"
-	}
-	return fmt.Sprintf("%s:%s", id, localIP)
 }

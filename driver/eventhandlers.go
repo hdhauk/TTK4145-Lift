@@ -10,7 +10,7 @@ func btnPressHandler(btnPressCh <-chan Btn) {
 	cbTriggerInterval := 250 * time.Millisecond
 
 	// Block until connection is established
-	<-liftConnDone
+	<-liftConnDoneCh
 
 	for {
 		select {
@@ -44,7 +44,7 @@ func floorDetectHandler(floorDetectCh <-chan int, apFloor chan<- int) {
 	}
 
 	// Block until connection is established
-	<-liftConnDone
+	<-liftConnDoneCh
 
 	/*
 		== WORKER LOOP ==

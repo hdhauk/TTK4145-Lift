@@ -8,7 +8,7 @@ const (
 	yellow = "\x1b[33;1m"
 )
 
-func autoPilot(apFloorCh <-chan int, driverInitDone chan struct{}) {
+func autoPilot(apFloorCh <-chan int, driverInitDone chan error) {
 	// lastFloor := 0
 	// dstFloor := 0
 	currentDir := stop
@@ -17,7 +17,7 @@ func autoPilot(apFloorCh <-chan int, driverInitDone chan struct{}) {
 		currentDir = dir
 	}
 
-	<-liftConnDone
+	<-liftConnDoneCh
 
 	// Drive up to a well defined floor
 	var lastFloor, dstFloor int
