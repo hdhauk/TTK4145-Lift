@@ -8,13 +8,13 @@ package driver
 // unless it is stopped before arriving at its destination.
 // A second call to the function will void the previous order if the carrige
 // haven't reached its destination.
-func GoToFloor(floor int) {
+func GoToFloor(floor int, dir string) {
 	if floor > cfg.Floors-1 || floor < 0 {
 		cfg.Logger.Printf("invalid floor requested: %v\n", floor)
 		return
 	}
 	if floor >= 0 {
-		floorDstCh <- floor
+		floorDstCh <- dst{floor: floor, dir: dir}
 	}
 }
 

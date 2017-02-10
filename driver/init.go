@@ -7,9 +7,14 @@ import (
 	"strconv"
 )
 
+type dst struct {
+	floor int
+	dir   string
+}
+
 // Package global channels
 var liftConnDoneCh chan bool
-var floorDstCh chan int
+var floorDstCh chan dst
 var btnPressCh chan Btn
 var floorDetectCh chan int
 var apFloorCh chan int
@@ -40,7 +45,7 @@ func Init(c Config, done chan error) {
 	btnPressCh = make(chan Btn, 4)
 	floorDetectCh = make(chan int)
 	apFloorCh = make(chan int)
-	floorDstCh = make(chan int)
+	floorDstCh = make(chan dst)
 
 	// Spawn workers
 	go btnScan(btnPressCh)
@@ -56,32 +61,26 @@ func Init(c Config, done chan error) {
 
 // Default config (may be partially or completely overwritten)
 var cfg = Config{
-	SimMode: true,
-	SimPort: "53566",
-	Floors:  4,
-	OnFloorDetect: func(f int) {
-		fmt.Printf("onFloorDetect callback not set! Floor: %v\n", f)
-	},
-	OnNewDirection: func(dir string) {
-		fmt.Printf("onNewDirection callback not set! Dir: %v\n", dir)
-	},
+	SimMode:     true,
+	SimPort:     "53566",
+	Floors:      4,
+	OnNewStatus: func(f, d int, dir string) { fmt.Println("OnNewStatus callback not set!") },
 	OnBtnPress: func(b Btn) {
 		fmt.Printf("onBtnPress callback not set! Type: %v, Floor: %v\n", b.Type, b.Floor)
 	},
-	OnDstReached: func(f int) { fmt.Printf("OnDstReached callback not set! Floor: %v\n", f) },
+	OnDstReached: func(b Btn) { fmt.Printf("OnDstReached callback not set! Floor: %v\n", b.Floor) },
 	Logger:       log.New(os.Stdout, "driver-default-debugger:", log.Lshortfile|log.Ltime),
 }
 
 // Config defines the configuration for the driver.
 type Config struct {
-	SimMode        bool
-	SimPort        string
-	Floors         int
-	OnFloorDetect  func(floor int)
-	OnNewDirection func(direction string)
-	OnDstReached   func(floor int)
-	OnBtnPress     func(b Btn)
-	Logger         *log.Logger
+	SimMode      bool
+	SimPort      string
+	Floors       int
+	OnNewStatus  func(floor, dst int, dir string)
+	OnDstReached func(b Btn)
+	OnBtnPress   func(b Btn)
+	Logger       *log.Logger
 }
 
 var driver = struct {
@@ -123,15 +122,16 @@ func setConfig(c Config) error {
 	}
 
 	// Check set provided callbacks
-	if c.OnFloorDetect != nil {
-		cfg.OnFloorDetect = c.OnFloorDetect
+	if c.OnNewStatus != nil {
+		cfg.OnNewStatus = c.OnNewStatus
 	}
 	if c.OnBtnPress != nil {
 		cfg.OnBtnPress = c.OnBtnPress
 	}
-	if c.OnNewDirection != nil {
-		cfg.OnNewDirection = c.OnNewDirection
+	if c.OnDstReached != nil {
+		cfg.OnDstReached = c.OnDstReached
 	}
+
 	return nil
 }
 
