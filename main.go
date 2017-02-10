@@ -112,7 +112,7 @@ func btnScanner() {
 
 		for k, v := range s.HallDownButtons {
 			f, _ := strconv.Atoi(k)
-			if v.LastStatus != "done" {
+			if v.LastStatus == "done" {
 				driver.BtnLEDClear(driver.Btn{Floor: f, Type: driver.HallDown})
 			} else {
 				driver.BtnLEDSet(driver.Btn{Floor: f, Type: driver.HallDown})
