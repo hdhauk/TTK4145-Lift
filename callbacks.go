@@ -12,7 +12,7 @@ import (
 // =============================================================================
 func onIncommingCommand(f int, dir string) {
 	fmt.Printf("Supposed to go to floor %d, somebody want %s from there\n", f, dir)
-	driver.GoToFloor(f)
+	driver.GoToFloor(f, dir)
 }
 
 func onPromotion() {}
@@ -31,16 +31,23 @@ func onBtnPress(b driver.Btn) {
 	driver.BtnLEDSet(b)
 }
 
-func onDstReached(f int) {
-
+func onNewStatus(f, dst int, dir string) {
+	lsu := globalstate.LiftStatusUpdate{
+		Floor: uint(f),
+		Dst:   uint(dst),
+		Dir:   dir,
+	}
+	globalstate.UpdateLiftStatus(lsu)
 }
 
-func onFloorDetect(f int) {
-
-}
-
-func onNewDirection(dir string) {
-
+func onDstReached(b driver.Btn) {
+	bsu := globalstate.ButtonStatusUpdate{
+		Floor:  uint(b.Floor),
+		Dir:    b.Type.String(),
+		Status: globalstate.BtnStateDone,
+	}
+	globalstate.UpdateButtonStatus(bsu)
+	driver.BtnLEDClear(b)
 }
 
 // Peer discovery callbacks

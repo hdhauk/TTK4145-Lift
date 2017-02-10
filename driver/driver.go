@@ -4,17 +4,19 @@ The package also usure that the floor-indicator always show the correct floor,
 and that the carrige always have a closed door unless stationary at a floor.*/
 package driver
 
+import "fmt"
+
 // GoToFloor sends the elevator carrige to the desired floor and stop there,
 // unless it is stopped before arriving at its destination.
 // A second call to the function will void the previous order if the carrige
 // haven't reached its destination.
-func GoToFloor(floor int) {
+func GoToFloor(floor int, dir string) {
 	if floor > cfg.Floors-1 || floor < 0 {
-		cfg.Logger.Printf("invalid floor requested: %v\n", floor)
+		cfg.Logger.Printf("%s[ERROR] Invalid floor requested: %v%s\n", yellow, floor, white)
 		return
 	}
 	if floor >= 0 {
-		floorDstCh <- floor
+		floorDstCh <- dst{floor: floor, dir: dir}
 	}
 }
 
@@ -26,13 +28,20 @@ func GoToFloor(floor int) {
 
 // BtnLEDClear turns off the LED in the provided button.
 func BtnLEDClear(b Btn) {
+	if err := validateButton(b); err != nil {
+		cfg.Logger.Printf("%s[ERROR] Invalid button: %s%s", yellow, err.Error(), white)
+		return
+	}
 	// TODO: Check for race conditions
 	driver.setBtnLED(b, false)
 }
 
 // BtnLEDSet turns on the LED in the provided button.
 func BtnLEDSet(b Btn) {
-	// TODO: Check for race conditions
+	if err := validateButton(b); err != nil {
+		cfg.Logger.Printf("%s[ERROR] Invalid button: %s%s", yellow, err.Error(), white)
+		return
+	}
 	driver.setBtnLED(b, true)
 }
 
@@ -74,4 +83,17 @@ func (bt *BtnType) String() string {
 		return "Cab"
 	}
 	return ""
+}
+
+func validateButton(b Btn) error {
+	if b.Floor > cfg.Floors-1 || b.Floor < 0 {
+		return fmt.Errorf("floor not in range [ %d - %d ]", 0, cfg.Floors-1)
+	}
+	if b.Floor == 0 && b.Type == HallDown {
+		return fmt.Errorf("no down button at ground floor")
+	}
+	if b.Floor == cfg.Floors-1 && b.Type == HallUp {
+		return fmt.Errorf("no up button at top floor")
+	}
+	return nil
 }

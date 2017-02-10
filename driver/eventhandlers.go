@@ -67,7 +67,6 @@ func floorDetectHandler(floorDetectCh <-chan int, apFloor chan<- int) {
 				if beenDriving {
 					driver.setFloorLED(floor)
 					setBeenDriving(false)
-					cfg.OnFloorDetect(floor)
 					apFloor <- floor
 					break selector
 				}

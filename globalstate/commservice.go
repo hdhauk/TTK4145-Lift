@@ -89,9 +89,11 @@ func (s *service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		s.HandleButtonUpdate(w, r)
 	} else if strings.HasPrefix(p, "/cmd") {
 		s.HandleCmd(w, r)
+	} else if strings.HasPrefix(p, "/debug/dump-state") {
+		s.HandleDebugDumpState(w, r)
 	} else {
 		w.WriteHeader(http.StatusNotFound)
-		log.Printf("not found: someone tried to access %v", p)
+		theFSM.logger.Printf("not found: someone tried to access %v", p)
 	}
 }
 
@@ -213,9 +215,17 @@ func (s *service) HandleButtonUpdate(w http.ResponseWriter, r *http.Request) {
 
 	if err := s.store.UpdateButtonStatus(status); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 	theFSM.logger.Printf("[INFO] Successfully accepted button status update.")
 	w.WriteHeader(http.StatusOK)
+}
+
+func (s *service) HandleDebugDumpState(w http.ResponseWriter, r *http.Request) {
+	state, _ := GetState()
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	json.NewEncoder(w).Encode(state)
 }
 
 func (s *service) HandleKick(w http.ResponseWriter, r *http.Request) {
