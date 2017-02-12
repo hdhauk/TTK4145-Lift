@@ -113,7 +113,6 @@ func join(initialPeer, raftAddr, ownIP string, logger *log.Logger) error {
 	logger.Printf("[INFO] Redirected! Attempting to join: %v\n", url)
 	resp2, err := http.Post(url, "application-type/json", bytes.NewReader(b))
 	if err != nil {
-		defer resp2.Body.Close()
 		return err
 	}
 	resp2.Body.Close()
