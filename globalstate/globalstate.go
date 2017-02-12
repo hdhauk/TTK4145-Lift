@@ -43,14 +43,15 @@ const (
 
 // Config defines ...TODO: Something informative here...
 type Config struct {
-	RaftPort          int
-	InitalPeer        string
-	OwnIP             string
-	OnPromotion       func()
-	OnDemotion        func()
-	OnIncomingCommand func(floor int, dir string)
-	CostFunction      func(s State, floor int, dir string) string
-	Logger            *log.Logger
+	RaftPort           int
+	InitalPeer         string
+	OwnIP              string
+	OnPromotion        func()
+	OnDemotion         func()
+	OnIncomingCommand  func(floor int, dir string)
+	CostFunction       func(s State, floor int, dir string) string
+	Logger             *log.Logger
+	DisableRaftLogging bool
 }
 
 // LiftStatusUpdate defines an message with which you intend to update the global store with.

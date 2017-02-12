@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net"
 	"os"
@@ -53,7 +54,11 @@ func newFSM(rPortStr string) *fsm {
 func (f *fsm) Start(enableSingle bool) error {
 	// Set up Raft configuration
 	raftCfg := raft.DefaultConfig()
-	raftCfg.Logger = f.logger
+	if f.config.DisableRaftLogging {
+		raftCfg.Logger = log.New(ioutil.Discard, "", log.Ltime)
+	} else {
+		raftCfg.Logger = log.New(os.Stderr, "[raft] ", log.Ltime|log.Lshortfile)
+	}
 
 	// Set up Raft communication.
 	rSocket := ":" + f.RaftPort
