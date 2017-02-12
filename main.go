@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"time"
 
-	"bitbucket.org/halvor_haukvik/ttk4145-elevator/driver"
 	"bitbucket.org/halvor_haukvik/ttk4145-elevator/globalstate"
 	"bitbucket.org/halvor_haukvik/ttk4145-elevator/peerdiscovery"
 )
@@ -46,24 +45,6 @@ func main() {
 	go peerdiscovery.Start(discoveryConfig)
 	time.Sleep(2 * discoveryConfig.BroadcastInterval)
 
-	// Initialize driver
-	cfg := driver.Config{
-		SimMode:      true,
-		SimPort:      simPort,
-		Floors:       4,
-		OnBtnPress:   onBtnPress,
-		OnNewStatus:  onNewStatus,
-		OnDstReached: onDstReached,
-		Logger:       log.New(os.Stderr, "[driver] ", log.Ltime|log.Lshortfile),
-	}
-	driverInitDone := make(chan error)
-	go driver.Init(cfg, driverInitDone)
-	err := <-driverInitDone
-	if err != nil {
-		mainlogger.Fatalf("[ERROR] Failed to initalize driver: %v", err)
-	}
-	mainlogger.Println("[INFO] Driver successfully initialized")
-
 	// Initalize globalstate
 	ip, _ := peerdiscovery.GetLocalIP()
 	globalstateConfig := globalstate.Config{
@@ -88,36 +69,6 @@ func main() {
 		}
 	}
 
-	go btnScanner()
-
 	// Block forever
 	select {}
-}
-
-func btnScanner() {
-	for {
-		time.Sleep(500 * time.Millisecond)
-		s, err := globalstate.GetState()
-		if err != nil {
-			continue
-		}
-		for k, v := range s.HallUpButtons {
-			f, _ := strconv.Atoi(k)
-			if v.LastStatus == "done" {
-				driver.BtnLEDClear(driver.Btn{Floor: f, Type: driver.HallUp})
-			} else {
-				driver.BtnLEDSet(driver.Btn{Floor: f, Type: driver.HallUp})
-			}
-		}
-
-		for k, v := range s.HallDownButtons {
-			f, _ := strconv.Atoi(k)
-			if v.LastStatus == "done" {
-				driver.BtnLEDClear(driver.Btn{Floor: f, Type: driver.HallDown})
-			} else {
-				driver.BtnLEDSet(driver.Btn{Floor: f, Type: driver.HallDown})
-			}
-		}
-
-	}
 }
