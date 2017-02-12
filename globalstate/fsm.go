@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -56,7 +57,8 @@ func (f *fsm) Start(enableSingle bool) error {
 
 	// Set up Raft communication.
 	rSocket := ":" + f.RaftPort
-	addr, err := net.ResolveTCPAddr("tcp", rSocket)
+	localIP := getOutboundIP()
+	addr, err := net.ResolveTCPAddr("tcp", localIP+rSocket)
 	if err != nil {
 		f.logger.Printf("[ERROR] Unable to resolve TCP raft-endpoint: %s\n", err.Error())
 		return err
@@ -349,4 +351,17 @@ func (f *fsm) applyBtnDownUpdate(floor string, b []byte) interface{} {
 	defer f.mu.Unlock()
 	f.state.HallDownButtons[floor] = status
 	return nil
+}
+
+func getOutboundIP() string {
+	conn, err := net.Dial("udp", "8.8.8.8:80")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer conn.Close()
+
+	localAddr := conn.LocalAddr().String()
+	idx := strings.LastIndex(localAddr, ":")
+
+	return localAddr[0:idx]
 }
