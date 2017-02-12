@@ -55,7 +55,7 @@ func (f *fsm) Start(enableSingle bool) error {
 	raftCfg.Logger = f.logger
 
 	// Set up Raft communication.
-	rSocket := "127.0.0.1:" + f.RaftPort
+	rSocket := ":" + f.RaftPort
 	addr, err := net.ResolveTCPAddr("tcp", rSocket)
 	if err != nil {
 		f.logger.Printf("[ERROR] Unable to resolve TCP raft-endpoint: %s\n", err.Error())

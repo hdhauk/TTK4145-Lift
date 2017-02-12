@@ -43,10 +43,13 @@ EOF
         sleep .2
         echo ".. to boot!"
 
-        gnome-terminal -e './ttk4145-elevator -sim 53566 -nick sim53566' --geometry 90x10+680+100 --title="controller53566"
-        gnome-terminal -e './ttk4145-elevator -sim 53567 -nick sim53567' --geometry 90x10+680+320 --title="controller53567"
-        gnome-terminal -e './ttk4145-elevator -sim 53568 -nick sim53568' --geometry 90x10+680+540 --title="controller53568"
-        gnome-terminal -e './ttk4145-elevator -sim 53569 -nick sim53569' --geometry 90x10+680+760 --title="controller53569"
+        gnome-terminal -e './ttk4145-elevator -sim 53566 -nick sim53566 -raft 8000' --geometry 90x10+680+100 --title="controller53566"
+        sleep 5
+        gnome-terminal -e './ttk4145-elevator -sim 53567 -nick sim53567 -raft 8002' --geometry 90x10+680+320 --title="controller53567"
+        sleep 5
+        gnome-terminal -e './ttk4145-elevator -sim 53568 -nick sim53568 -raft 8004' --geometry 90x10+680+540 --title="controller53568"
+        sleep 5
+        gnome-terminal -e './ttk4145-elevator -sim 53569 -nick sim53569 -raft 8006' --geometry 90x10+680+760 --title="controller53569"
 
         echo "Select simulators"
         SIM1=$(xdotool search --name sim53566)

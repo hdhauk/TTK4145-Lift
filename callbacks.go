@@ -27,7 +27,10 @@ func onBtnPress(b driver.Btn) {
 		Dir:    b.Type.String(),
 		Status: globalstate.BtnStateUnassigned,
 	}
-	globalstate.UpdateButtonStatus(bsu)
+	err := globalstate.UpdateButtonStatus(bsu)
+	if err != nil {
+		fmt.Println("Failed to send button update...")
+	}
 	driver.BtnLEDSet(b)
 }
 
@@ -37,7 +40,9 @@ func onNewStatus(f, dst int, dir string) {
 		Dst:   uint(dst),
 		Dir:   dir,
 	}
-	globalstate.UpdateLiftStatus(lsu)
+	if err := globalstate.UpdateLiftStatus(lsu); err != nil {
+		fmt.Println("Failed to send liftupdate...")
+	}
 }
 
 func onDstReached(b driver.Btn) {
@@ -46,7 +51,9 @@ func onDstReached(b driver.Btn) {
 		Dir:    b.Type.String(),
 		Status: globalstate.BtnStateDone,
 	}
-	globalstate.UpdateButtonStatus(bsu)
+	if err := globalstate.UpdateButtonStatus(bsu); err != nil {
+		fmt.Println("Failed to send DONE status")
+	}
 	driver.BtnLEDClear(b)
 }
 

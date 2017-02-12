@@ -47,7 +47,7 @@ func Init(cfg Config) error {
 	}
 
 	// Start the communication service, to handle join requests.
-	service := newCommService("127.0.0.1:"+cPortStr, theFSM)
+	service := newCommService("0.0.0.0:"+cPortStr, theFSM)
 	if err3 := service.Start(); err3 != nil {
 		theFSM.logger.Printf("[ERROR] Unable to start communication service: %v\n", err3.Error())
 		return err3
