@@ -87,7 +87,12 @@ func UpdateLiftStatus(ls LiftStatusUpdate) error {
 	b := new(bytes.Buffer)
 	json.NewEncoder(b).Encode(status)
 
-	leader := leaderComEndpoint(theFSM.GetLeader())
+	// Get leader communication endpoint
+	leader, err := leaderComEndpoint()
+	if err != nil {
+		return err
+	}
+
 	url := fmt.Sprintf("http://%s/update/lift", leader)
 	res, err := http.Post(url, "application/json; charset=utf-8", b)
 	if err != nil {
@@ -111,8 +116,13 @@ func UpdateButtonStatus(bs ButtonStatusUpdate) error {
 		return err
 	}
 
+	// Get leader communication endpoint
+	leader, err := leaderComEndpoint()
+	if err != nil {
+		return err
+	}
+
 	// Post the update to the current raft-leader
-	leader := leaderComEndpoint(theFSM.GetLeader())
 	url := fmt.Sprintf("http://%s/update/button", leader)
 	res, err := http.Post(url, "application/json; charset=utf-8", b)
 	if err != nil {
@@ -133,8 +143,13 @@ func GetState() (State, error) {
 
 // Helper functions
 // =============================================================================
-func leaderComEndpoint(leader string) string {
-	parts := strings.Split(leader, ":")
+func leaderComEndpoint() (string, error) {
+	leaderRaftAddr := theFSM.GetLeader()
+	if leaderRaftAddr == "" {
+		theFSM.logger.Printf("[ERROR] Cannot send button status. No current leader.")
+		return "", fmt.Errorf("Cannot send button status. No current leader")
+	}
+	parts := strings.Split(leaderRaftAddr, ":")
 	portStr, _ := strconv.Atoi(parts[1])
-	return fmt.Sprintf("%s:%d", parts[0], portStr+1)
+	return fmt.Sprintf("%s:%d", parts[0], portStr+1), nil
 }
