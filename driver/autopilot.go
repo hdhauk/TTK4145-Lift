@@ -53,7 +53,7 @@ func autoPilot(apFloorCh <-chan int, driverInitDone chan error) {
 			cfg.Logger.Printf("[INFO] At floor: %v\t dstFloor: %v\n", f, dstFloor)
 			// Case 1
 			if f == dstFloor.floor {
-				cfg.OnNewStatus(f, dstFloor.floor, currentDir)
+				cfg.OnNewStatus(f, dstFloor.floor, dstFloor.dir, currentDir)
 				driver.setMotorDir(stop)
 				setCurrentDir(stop)
 				cfg.OnDstReached(newBtn(f, dstFloor.dir))
@@ -67,7 +67,7 @@ func autoPilot(apFloorCh <-chan int, driverInitDone chan error) {
 				cfg.Logger.Printf(yellow+"[WARN] Unexpected direction value. Correcting to: %s"+white, newDir)
 				driver.setMotorDir(newDir)
 				setCurrentDir(newDir)
-				cfg.OnNewStatus(f, dstFloor.floor, newDir)
+				cfg.OnNewStatus(f, dstFloor.floor, dstFloor.dir, newDir)
 			}
 
 			// New destination given
@@ -119,6 +119,8 @@ func autoPilot(apFloorCh <-chan int, driverInitDone chan error) {
 			d2d := dirToDst(lastFloor, destination.floor)
 			driver.setMotorDir(d2d)
 			setCurrentDir(d2d)
+		case <-time.After(5 * time.Second):
+			cfg.OnNewStatus(lastFloor, dstFloor.floor, dstFloor.dir, currentDir)
 		}
 	}
 }

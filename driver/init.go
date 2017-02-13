@@ -64,7 +64,7 @@ var cfg = Config{
 	SimMode:     true,
 	SimPort:     "53566",
 	Floors:      4,
-	OnNewStatus: func(f, d int, dir string) { fmt.Println("OnNewStatus callback not set!") },
+	OnNewStatus: func(f, d int, dd, dir string) { fmt.Println("OnNewStatus callback not set!") },
 	OnBtnPress: func(b Btn) {
 		fmt.Printf("onBtnPress callback not set! Type: %v, Floor: %v\n", b.Type, b.Floor)
 	},
@@ -77,7 +77,7 @@ type Config struct {
 	SimMode      bool
 	SimPort      string
 	Floors       int
-	OnNewStatus  func(floor, dst int, dir string)
+	OnNewStatus  func(floor, dstFloor int, dstDir string, dir string)
 	OnDstReached func(b Btn)
 	OnBtnPress   func(b Btn)
 	Logger       *log.Logger

@@ -166,12 +166,12 @@ func (f *fsm) Restore(rc io.ReadCloser) error {
 // Functions for general usage and update of the raft-fsm
 // =============================================================================
 
-// Getstatus TODO: description
+// Getstatus returns the current raft-status (leader, candidate or follower)
 func (f *fsm) GetStatus() uint32 {
 	return uint32(f.raft.State())
 }
 
-// GetLeader TODO: description
+// GetLeader returns the ip:port of the current leader
 func (f *fsm) GetLeader() string {
 	return f.raft.Leader()
 }
@@ -189,6 +189,7 @@ func (f *fsm) Join(addr string) error {
 	return nil
 }
 
+// GetState returns a copy of the full state as it currently stands.
 func (f *fsm) GetState() State {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -202,6 +203,7 @@ func (f *fsm) UpdateLiftStatus(ls LiftStatus) error {
 		return fmt.Errorf("not leader")
 	}
 
+	ls.LastUpdate = time.Now()
 	v, _ := json.Marshal(ls)
 
 	// Create log entry for raft.

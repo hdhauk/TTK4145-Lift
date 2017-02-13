@@ -69,18 +69,22 @@ func (s *Status) DeepCopy() Status {
 
 // LiftStatus defines the publicly available information about the elevators in the cluster.
 type LiftStatus struct {
-	ID          string
-	LastFloor   uint
-	Destination uint
-	Direction   string
+	ID                         string
+	LastFloor                  uint
+	Direction                  string
+	DestinationFloor           uint
+	DestinationButtonDirection string
+	LastUpdate                 time.Time
 }
 
 // DeepCopy safely return a copy of the elevator.
 func (e *LiftStatus) DeepCopy() LiftStatus {
 	return LiftStatus{
-		ID:          e.ID,
-		LastFloor:   e.LastFloor,
-		Destination: e.Destination,
-		Direction:   e.Direction,
+		ID:                         e.ID,
+		LastFloor:                  e.LastFloor,
+		Direction:                  e.Direction,
+		DestinationFloor:           e.DestinationFloor,
+		DestinationButtonDirection: e.DestinationButtonDirection,
+		LastUpdate:                 e.LastUpdate,
 	}
 }

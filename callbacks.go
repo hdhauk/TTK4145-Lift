@@ -34,11 +34,12 @@ func onBtnPress(b driver.Btn) {
 	driver.BtnLEDSet(b)
 }
 
-func onNewStatus(f, dst int, dir string) {
+func onNewStatus(f, dstFloor int, dstDir, dir string) {
 	lsu := globalstate.LiftStatusUpdate{
-		Floor: uint(f),
-		Dst:   uint(dst),
-		Dir:   dir,
+		CurrentFloor: uint(f),
+		CurrentDir:   dir,
+		DstFloor:     uint(dstFloor),
+		DstBtnDir:    dstDir,
 	}
 	if err := globalstate.UpdateLiftStatus(lsu); err != nil {
 		fmt.Println("Failed to send liftupdate...")
