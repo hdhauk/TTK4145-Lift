@@ -48,14 +48,13 @@ func main() {
 	// Initalize globalstate
 	ip, _ := peerdiscovery.GetLocalIP()
 	globalstateConfig := globalstate.Config{
-		RaftPort:           raftPort,
-		OwnIP:              ip,
-		OnPromotion:        func() {},
-		OnDemotion:         func() { fmt.Println("DEMOTED, :(") },
-		OnIncomingCommand:  onIncommingCommand,
-		CostFunction:       func(s globalstate.State, f int, d string) string { return "localhost:8003" },
-		Logger:             log.New(os.Stderr, "[globalstate] ", log.Ltime|log.Lshortfile),
-		DisableRaftLogging: true,
+		RaftPort:          raftPort,
+		OwnIP:             ip,
+		OnPromotion:       func() { fmt.Println("PROMOTED!:)") },
+		OnDemotion:        func() { fmt.Println("DEMOTED, :(") },
+		OnIncomingCommand: onIncommingCommand,
+		CostFunction:      func(s globalstate.State, f int, d string) string { return "localhost:8003" },
+		Logger:            log.New(os.Stderr, "[globalstate] ", log.Ltime|log.Lshortfile),
 	}
 
 	// Pass any known peers

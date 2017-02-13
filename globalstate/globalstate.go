@@ -56,9 +56,10 @@ type Config struct {
 
 // LiftStatusUpdate defines an message with which you intend to update the global store with.
 type LiftStatusUpdate struct {
-	Floor uint
-	Dst   uint
-	Dir   string
+	CurrentFloor uint
+	CurrentDir   string
+	DstFloor     uint
+	DstBtnDir    string
 }
 
 // ButtonStatusUpdate defines a message with which you intend to update the global store with.
@@ -78,10 +79,11 @@ func UpdateLiftStatus(ls LiftStatusUpdate) error {
 	}
 	// Convert to liftStatus
 	status := LiftStatus{
-		ID:          theFSM.ownID,
-		LastFloor:   ls.Floor,
-		Destination: ls.Dst,
-		Direction:   ls.Dir,
+		ID:                         theFSM.ownID,
+		LastFloor:                  ls.CurrentFloor,
+		Direction:                  ls.CurrentDir,
+		DestinationFloor:           ls.DstFloor,
+		DestinationButtonDirection: ls.DstBtnDir,
 	}
 
 	b := new(bytes.Buffer)
