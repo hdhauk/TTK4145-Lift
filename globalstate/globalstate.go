@@ -48,10 +48,26 @@ type Config struct {
 	OwnIP              string
 	OnPromotion        func()
 	OnDemotion         func()
+	OnAquiredConsensus func()
+	OnLostConsensus    func()
 	OnIncomingCommand  func(floor int, dir string)
 	CostFunction       func(s State, floor int, dir string) string
 	Logger             *log.Logger
 	DisableRaftLogging bool
+}
+
+var defaultConfig = Config{
+	RaftPort:           8000,
+	InitalPeer:         "",
+	OwnIP:              "localhost",
+	OnPromotion:        func() {},
+	OnDemotion:         func() {},
+	OnAquiredConsensus: func() {},
+	OnLostConsensus:    func() {},
+	OnIncomingCommand:  func(f int, d string) {},
+	CostFunction:       func(s State, f int, d string) string { return "localhost:8000" },
+	Logger:             log.New(os.Stderr, "", log.LstdFlags),
+	DisableRaftLogging: false,
 }
 
 // LiftStatusUpdate defines an message with which you intend to update the global store with.

@@ -33,15 +33,7 @@ EOF
         gnome-terminal -e "rdmd sim_server.d" --geometry 50x10+200+760 --title="sim53569"
         cd ../../..
 
-        echo "Waiting..."
-        sleep .2
-        echo "..for.."
-        sleep .2
-        echo "..the.."
-        sleep .2
-        echo "..simulators.."
-        sleep .2
-        echo ".. to boot!"
+        read -p "Press any key to continue when simulators are ready... " -n1 -s
 
         gnome-terminal -e './ttk4145-elevator -sim 53566 -nick sim53566 -raft 8000' --geometry 90x10+680+100 --title="controller53566"
         sleep 5

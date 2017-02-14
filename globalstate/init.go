@@ -65,8 +65,9 @@ func Init(cfg Config) error {
 	// Wait for raft to either join or create a new raft. This usually takes 2-3 seconds
 	time.Sleep(4 * time.Second)
 
-	// Start the leader worker
+	// Start workers
 	go theFSM.LeaderMonitor()
+	go theFSM.ConsensusMonitor()
 
 	theFSM.initDone = true
 	return nil
@@ -83,13 +84,6 @@ func join(initialPeer, raftAddr, ownIP string, logger *log.Logger) error {
 	parts := strings.Split(initialPeer, ":")
 	port, _ := strconv.Atoi(parts[1])
 	initialPeer = fmt.Sprintf("%s:%d", parts[0], port+1)
-
-	// HACK: For some reason go struggles to make request to localhost if you
-	// try to connect to the actual interface address.
-	if strings.Contains(initialPeer, ownIP) {
-		parts := strings.Split(initialPeer, ":")
-		initialPeer = "127.0.0.1:" + parts[1]
-	}
 
 	url := fmt.Sprintf("http://%s/join", initialPeer)
 	logger.Printf("[INFO] Attempting to join %v", url)
