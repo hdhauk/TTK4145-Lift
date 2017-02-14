@@ -10,45 +10,30 @@ import (
 	"strings"
 )
 
-// StoreInterface is the interface Raft-backed key-value stores must implement.
-// The communication service is implmeneted with this interface instead of the
-// actual store-type to limit access to private datamembers, and clearify which
-// functions that is in use.
-type StoreInterface interface {
-	// Join joins the node, reachable at addr, to the cluster.
-	Join(addr string) error
-
-	// GetLeader returns the address of the current cluster leader
-	GetLeader() string
-
-	// GetStatus returns the current
-	GetStatus() uint32
-
-	UpdateLiftStatus(ls LiftStatus) error
-	UpdateButtonStatus(bsu ButtonStatusUpdate) error
-}
-
-// service provides HTTP service for admitting new peers and command messages.
-type service struct {
+// commService provides HTTP commService for admitting new peers and command messages.
+type commService struct {
 	addr       string
 	leaderAddr string
 	ln         net.Listener
-	store      StoreInterface
+	store      *raftwrapper
+	logger     *log.Logger
 }
 
-func newCommService(addr string, store StoreInterface) *service {
-	return &service{
-		addr:  addr,
-		store: store,
+func newCommService(addr string, store *raftwrapper) *commService {
+	return &commService{
+		addr:   addr,
+		store:  store,
+		logger: store.logger,
 	}
 }
 
 // Start starts the communication service and start listening.
-func (s *service) Start() error {
+func (s *commService) Start() error {
 	server := http.Server{
 		Handler: s,
 	}
 
+	// fmt.Println(s.addr)
 	// Create listener
 	l, err := net.Listen("tcp", s.addr)
 	if err != nil {
@@ -57,7 +42,7 @@ func (s *service) Start() error {
 	s.ln = l
 
 	// Handle request to the root
-	http.Handle("/", s)
+	http.ListenAndServe(s.addr, s)
 
 	// Start accepting incomming connections on the listener
 	go func() {
@@ -70,13 +55,13 @@ func (s *service) Start() error {
 }
 
 // Close closes the service.
-func (s *service) Close() {
+func (s *commService) Close() {
 	s.ln.Close()
 	return
 }
 
 // ServeHTTP defines the behaviour when receiving a request
-func (s *service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (s *commService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	p := r.URL.Path
 	// Mux different endpoints
 	if strings.HasPrefix(p, "/join") {
@@ -93,20 +78,20 @@ func (s *service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		s.HandleDebugDumpState(w, r)
 	} else {
 		w.WriteHeader(http.StatusNotFound)
-		theFSM.logger.Printf("not found: someone tried to access %v", p)
+		s.logger.Printf("not found: someone tried to access %v", p)
 	}
 }
 
 // Endpoint handlers
 // =============================================================================
-func (s *service) HandleJoin(w http.ResponseWriter, r *http.Request) {
+func (s *commService) HandleJoin(w http.ResponseWriter, r *http.Request) {
 	// Redirect if not currently leader
 	if s.store.GetStatus() != 2 {
 		// Infer commport from the raft-port. The communication port should always
 		// be one above the raft port.
 		leader := s.store.GetLeader()
 		if leader == "" {
-			theFSM.logger.Println("[WARN] No current leader. Cannot redirect")
+			s.logger.Println("[WARN] No current leader. Cannot redirect")
 			w.WriteHeader(http.StatusGone)
 			return
 		}
@@ -151,7 +136,7 @@ func (s *service) HandleJoin(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func (s *service) HandleCmd(w http.ResponseWriter, r *http.Request) {
+func (s *commService) HandleCmd(w http.ResponseWriter, r *http.Request) {
 	// Check for empty reqest
 	if r.Body == nil {
 		http.Error(w, "No request body provided", http.StatusBadRequest)
@@ -170,11 +155,10 @@ func (s *service) HandleCmd(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-
-	theFSM.config.OnIncomingCommand(btn.Floor, btn.Dir)
+	s.store.config.OnIncomingCommand(btn.Floor, btn.Dir)
 }
 
-func (s *service) HandleLiftUpdate(w http.ResponseWriter, r *http.Request) {
+func (s *commService) HandleLiftUpdate(w http.ResponseWriter, r *http.Request) {
 	// Check for empty reqest
 	if r.Body == nil {
 		http.Error(w, "No request body provided", http.StatusBadRequest)
@@ -192,14 +176,14 @@ func (s *service) HandleLiftUpdate(w http.ResponseWriter, r *http.Request) {
 	if err := s.store.UpdateLiftStatus(status); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 	}
-	theFSM.logger.Printf("[INFO] Successfully accepted lift status update.")
+	s.logger.Printf("[INFO] Successfully accepted lift status update.")
 	w.WriteHeader(http.StatusOK)
 }
 
-func (s *service) HandleButtonUpdate(w http.ResponseWriter, r *http.Request) {
+func (s *commService) HandleButtonUpdate(w http.ResponseWriter, r *http.Request) {
 	// Check for empty reqest
 	if r.Body == nil {
-		theFSM.logger.Printf("[WARN] Recieved empty button status update.\n")
+		s.logger.Printf("[WARN] Recieved empty button status update.\n")
 		http.Error(w, "No request body provided", http.StatusBadRequest)
 		return
 	}
@@ -208,7 +192,7 @@ func (s *service) HandleButtonUpdate(w http.ResponseWriter, r *http.Request) {
 	var status ButtonStatusUpdate
 	err := json.NewDecoder(r.Body).Decode(&status)
 	if err != nil {
-		theFSM.logger.Println("[WARN] Unable to unmarshal incoming status update")
+		s.logger.Println("[WARN] Unable to unmarshal incoming status update")
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -217,17 +201,17 @@ func (s *service) HandleButtonUpdate(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	theFSM.logger.Printf("[INFO] Successfully accepted button status update.")
+	s.logger.Printf("[INFO] Successfully accepted button status update.")
 	w.WriteHeader(http.StatusOK)
 }
 
-func (s *service) HandleDebugDumpState(w http.ResponseWriter, r *http.Request) {
-	state, _ := GetState()
+func (s *commService) HandleDebugDumpState(w http.ResponseWriter, r *http.Request) {
+	state := s.store.GetState()
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	json.NewEncoder(w).Encode(state)
 }
 
-func (s *service) HandleKick(w http.ResponseWriter, r *http.Request) {
+func (s *commService) HandleKick(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("HandlerKick is not yet implemented")
 }

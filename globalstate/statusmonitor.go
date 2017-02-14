@@ -6,7 +6,7 @@ import (
 	"github.com/hashicorp/raft"
 )
 
-func (f *fsm) ConsensusMonitor() {
+func (f *raftwrapper) ConsensusMonitor() {
 	lastStatus := raft.Candidate
 	connected := false
 	setConn := func(b bool) { connected = b }
