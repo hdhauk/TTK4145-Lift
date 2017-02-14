@@ -21,6 +21,8 @@ var simPort string
 var r = 1024 + rand.Intn(64510)
 var raftPort = r
 
+var gs globalstate.FSM
+
 func main() {
 	mainlogger := log.New(os.Stderr, "[main] ", log.Ltime|log.Lshortfile)
 	// Parse arg flags
@@ -48,26 +50,32 @@ func main() {
 	// Initalize globalstate
 	ip, _ := peerdiscovery.GetLocalIP()
 	globalstateConfig := globalstate.Config{
-		RaftPort:          raftPort,
-		OwnIP:             ip,
-		OnPromotion:       func() { fmt.Println("PROMOTED!:)") },
-		OnDemotion:        func() { fmt.Println("DEMOTED, :(") },
-		OnIncomingCommand: onIncommingCommand,
-		CostFunction:      func(s globalstate.State, f int, d string) string { return "localhost:8003" },
-		Logger:            log.New(os.Stderr, "[globalstate] ", log.Ltime|log.Lshortfile),
+		RaftPort: raftPort,
+		OwnIP:    ip,
+		// OnPromotion:        func() { fmt.Println("PROMOTED!:)") },
+		// OnDemotion:         func() { fmt.Println("DEMOTED, :(") },
+		OnAquiredConsensus: func() { fmt.Println("Aquired RAFT-consensus") },
+		OnLostConsensus:    func() { fmt.Println("Lost RAFT-consensus") },
+		OnIncomingCommand:  onIncommingCommand,
+		CostFunction:       func(s globalstate.State, f int, d string) string { return "localhost:8003" },
+		Logger:             log.New(os.Stderr, "[globalstate] ", log.Ltime|log.Lshortfile),
+		DisableRaftLogging: true,
 	}
-
-	// Pass any known peers
-	if len(peers) == 0 {
-		go globalstate.Init(globalstateConfig)
-	} else {
+	// Attempt to connect to any known peers.
+	if len(peers) > 0 {
 		for _, anyPeer := range peers {
 			globalstateConfig.InitalPeer = anyPeer.IP + ":" + anyPeer.RaftPort
-			mainlogger.Printf("Identified raft. Starting global state with connection to: %s\n", globalstateConfig.InitalPeer)
-			go globalstate.Init(globalstateConfig)
+			mainlogger.Printf("[INFO] Other peers known. Attempting to connect to %s\n", globalstateConfig.InitalPeer)
 			break
 		}
 	}
+	gs = globalstate.FSM{}
+	err := gs.Init(globalstateConfig)
+	if err != nil {
+		mainlogger.Printf("[ERROR] Failed to initalize globalstore: %s", err.Error())
+	}
+
+	// Start syncinc button leds with the global state.
 
 	// Block forever
 	select {}
