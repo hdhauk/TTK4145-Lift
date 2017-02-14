@@ -1,374 +1,170 @@
 package globalstate
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
-	"net"
+	"net/http"
 	"os"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
-
-	"github.com/hashicorp/raft"
 )
 
-// fsm is the datastructure that hold pretty much everything interesting in
-// this package. The actual data is stored in the `state`-variable and read/writes
-// to it is protected by the mutex. The interface with the raft-library is DONE
-// through the raft-object, and itself provides replication hand heartbeating.
-// fsm need to fulfill the raft.fsm interface:
-//    * fsm.Appy(*raftLog) interface{}
-//    * fsm.Snapshot()(FSMSnapshot, error)
-//    * fsm.Restore(io.ReadCloser) error
-type fsm struct {
-	RaftDir  string
-	RaftPort string
-	mu       sync.Mutex
-	state    State
-	raft     *raft.Raft
+// FSM asdasd
+type FSM struct {
+	wrapper  *raftwrapper
+	comm     *commService
 	logger   *log.Logger
 	initDone bool
-	ownID    string
-	config   Config
 }
 
-// newFSM return a new raft-enabled finite state machine.
-func newFSM(rPortStr string) *fsm {
-	s := State{
-		Floors:          4,
-		Nodes:           make(map[string]LiftStatus),
-		HallUpButtons:   make(map[string]Status),
-		HallDownButtons: make(map[string]Status),
-	}
-	return &fsm{
-		RaftPort: rPortStr,
-		state:    s,
-		logger:   log.New(os.Stderr, "[globalstate] ", log.Ltime|log.Lshortfile),
-	}
-}
+// Init sets up and start the FSM
+func (f *FSM) Init(config Config) error {
+	// Parse ports
+	rPort := config.RaftPort
+	rPortStr := strconv.Itoa(rPort)
+	cPort := rPort + 1
+	cPortStr := strconv.Itoa(cPort)
 
-func (f *fsm) Start(enableSingle bool) error {
-	// Set up Raft configuration
-	raftCfg := raft.DefaultConfig()
-	if f.config.DisableRaftLogging {
-		raftCfg.Logger = log.New(ioutil.Discard, "", log.Ltime)
-	} else {
-		raftCfg.Logger = log.New(os.Stderr, "[raft] ", log.Ltime|log.Lshortfile)
-	}
+	// Creating new FSM
+	f.wrapper = newFSM(rPortStr)
 
-	// Set up Raft communication.
-	rSocket := ":" + f.RaftPort
-	localIP := getOutboundIP()
-	addr, err := net.ResolveTCPAddr("tcp", localIP+rSocket)
-	if err != nil {
-		f.logger.Printf("[ERROR] Unable to resolve TCP raft-endpoint: %s\n", err.Error())
+	// Safely store the config
+	if err := validateConfig(&config); err != nil {
 		return err
 	}
-	trans, err := raft.NewTCPTransportWithLogger(rSocket, addr, 3, 5*time.Second, f.logger)
-	if err != nil {
-		f.logger.Printf("[ERROR] Unable to set up Raft TCP Transport: %v\n", err.Error())
+	f.wrapper.config = config
+
+	// Set basic properties of the fsm
+	f.wrapper.ownID = config.OwnIP + ":" + rPortStr
+	f.wrapper.logger = config.Logger
+	f.logger = config.Logger
+
+	// Set up storage for FSM
+	tmpDir, err1 := ioutil.TempDir("", "raft-fsm-store")
+	if err1 != nil {
+		f.wrapper.logger.Printf("[ERROR] Unable to create temporary folder for raft: %v\n", err1.Error())
+		return fmt.Errorf("failed to instansiate temp folder: %v", err1)
+	}
+	defer os.RemoveAll(tmpDir)
+	f.wrapper.RaftDir = tmpDir
+
+	// Start the FSM
+	if err := f.wrapper.Start(config.InitalPeer == ""); err != nil {
+		f.logger.Printf("[ERROR] Unable to start FSM: %v\n", err.Error())
 		return err
 	}
 
-	// Create peer storage
-	peerStore := raft.NewJSONPeers(f.RaftDir, trans)
+	// Start the communication service, to handle join requests.
+	f.comm = newCommService("0.0.0.0:"+cPortStr, f.wrapper)
+	if err := f.comm.Start(); err != nil {
+		f.logger.Printf("[ERROR] Unable to start communication service: %v\n", err.Error())
+		return err
+	}
+	f.logger.Printf("[INFO] Communication service started on on port %v\n", cPort)
 
-	// Enable single-mode in order to allow bootstrapping of a new raft-cluster
-	// if no other peers are provided during initialization.
-	if enableSingle {
-		f.logger.Println("[INFO] Starting raft with single-node mode enabled.")
-		raftCfg.EnableSingleNode = true
-		raftCfg.DisableBootstrapAfterElect = false
+	// Join supplied peer.
+	if config.InitalPeer != "" {
+		err := join(config.InitalPeer, rPortStr, config.OwnIP, f.logger)
+		if err != nil {
+			f.logger.Printf("[ERROR] Unable to join node at %s: %s\n", config.InitalPeer, err.Error())
+			return err
+		}
 	}
 
-	// Create a snapshot store, allowing the Raft to truncate the log.
-	snapshots, err := raft.NewFileSnapshotStoreWithLogger(f.RaftDir, 2, f.logger)
-	if err != nil {
-		f.logger.Printf("[ERROR] Unable to create Snapshot store: %v\n", err.Error())
-		return fmt.Errorf("file snapshot store: %s", err)
-	}
+	// Wait for raft to either join or create a new raft. This usually takes 2-3 seconds
+	time.Sleep(4 * time.Second)
 
-	// Create log store and stable store. These only exist in memory, as our
-	// database is useless for old information anyway.
-	logStore := raft.NewInmemStore()
-	stableStore := raft.NewInmemStore()
+	// Start workers
+	go f.wrapper.LeaderMonitor()
+	go f.wrapper.ConsensusMonitor()
 
-	// Instantiate Raft
-	ra, err := raft.NewRaft(raftCfg, f, logStore, stableStore, snapshots, peerStore, trans)
-	if err != nil {
-		f.logger.Printf("[ERROR] Unable to instansiate raft: %v\n", err.Error())
-		return fmt.Errorf("new raft: %s", err)
-	}
-	f.raft = ra
-	f.logger.Println("[INFO] Successfully initalized Raft")
+	f.initDone = true
 	return nil
 }
 
-// raft-interface functions
-// =============================================================================
+// Close shuts down the FSM
+func (f *FSM) Close() {
+	close(f.wrapper.shutdown)
+	f.logger.Println("[INFO] Shutting down raft")
+	future := f.wrapper.raft.Shutdown()
+	if future.Error() != nil {
+		f.logger.Fatalf("[ERROR] Failed to close FSM: %v", future.Error())
+	}
+	//f.comm.Close()
+}
 
-// Apply applies a Raft log entry to the key-value store.
-// It returns a value which will be made available in the
-// ApplyFuture returned by Raft.Apply method if that
-// method was called on the same Raft node as the FSM.
-func (f *fsm) Apply(l *raft.Log) interface{} {
-	var c command
-	if err := json.Unmarshal(l.Data, &c); err != nil {
-		f.logger.Fatalf(fmt.Sprintf("failed to unmarshal command: %s", err.Error()))
+func validateConfig(c *Config) error {
+	if c.RaftPort == 0 {
+		return fmt.Errorf("no raft port set")
+	}
+	if c.OwnIP == "" {
+		c.OwnIP = getOutboundIP()
+	}
+	if c.OnPromotion == nil {
+		c.OnPromotion = func() {}
+	}
+	if c.OnDemotion == nil {
+		c.OnDemotion = func() {}
+	}
+	if c.OnAquiredConsensus == nil {
+		c.OnAquiredConsensus = func() {}
+	}
+	if c.OnLostConsensus == nil {
+		c.OnLostConsensus = func() {}
+	}
+	if c.OnIncomingCommand == nil {
+		c.OnIncomingCommand = func(f int, d string) {}
+	}
+	if c.CostFunction == nil {
+		c.CostFunction = func(s State, f int, d string) string { return "localhost:8000" }
+	}
+	if c.Logger == nil {
+		c.Logger = log.New(os.Stderr, "", log.LstdFlags)
+	}
+	return nil
+}
+
+func join(initialPeer, raftAddr, ownIP string, logger *log.Logger) error {
+	// Marshal join request
+	b, err := json.Marshal(map[string]string{"addr": raftAddr})
+	if err != nil {
+		return err
 	}
 
-	switch c.Type {
-	case "updateFloor":
-		return f.applyUpdateFloor(c.Value)
-	case "nodeUpdate":
-		return f.applyNodeUpdate(c.Key, c.Value)
-	case "btnUpUpdate":
-		return f.applyBtnUpUpdate(c.Key, c.Value)
-	case "btnDownUpdate":
-		return f.applyBtnDownUpdate(c.Key, c.Value)
-	default:
-		f.logger.Printf(fmt.Sprintf("Unrecognized command: %s", c.Type))
+	// Infer communication port from RaftPort (comport is always one above!)
+	parts := strings.Split(initialPeer, ":")
+	port, _ := strconv.Atoi(parts[1])
+	initialPeer = fmt.Sprintf("%s:%d", parts[0], port+1)
+
+	url := fmt.Sprintf("http://%s/join", initialPeer)
+	logger.Printf("[INFO] Attempting to join %v", url)
+	resp, err := http.Post(url, "application-type/json", bytes.NewReader(b))
+	if err != nil {
+		return err
+	}
+
+	// Peer admitted on first try (ie. luckily tried the leader on first try)
+	if resp.Header.Get("X-Raft-Leader") == "" {
+		logger.Printf("[INFO] Successfully joined raft\n")
 		return nil
 	}
-}
 
-// Snapshot is used to support log compaction. This call should
-// return an FSMSnapshot which can be used to save a point-in-time
-// snapshot of the FSM. Apply and Snapshot are not called in multiple
-// threads, but Apply will be called concurrently with Persist. This means
-// the FSM should be implemented in a fashion that allows for concurrent
-// updates while a snapshot is happening.
-func (f *fsm) Snapshot() (raft.FSMSnapshot, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	return &fsmSnapshot{store: f.state.DeepCopy()}, nil
-}
+	// Extract address to the leader
+	leaderAddr := resp.Header.Get("X-Raft-Leader")
+	resp.Body.Close()
 
-// Restore is used to restore an FSM from a snapshot. It is not called
-// concurrently with any other command. The FSM must discard all previous
-// state.
-func (f *fsm) Restore(rc io.ReadCloser) error {
-	newState := State{}
-	if err := json.NewDecoder(rc).Decode(&newState); err != nil {
-		f.logger.Printf("Failed to decode FSM from snapshot: %v\n", err)
+	// Request the leader
+	url = fmt.Sprintf("http://%s/join", leaderAddr)
+	logger.Printf("[INFO] Redirected! Attempting to join: %v\n", url)
+	resp2, err := http.Post(url, "application-type/json", bytes.NewReader(b))
+	if err != nil {
 		return err
 	}
-	// No need to lock the mutex as this command isn't run concurrently with any
-	// other command (according to Hashicorp docs)
-	f.state = newState
+	resp2.Body.Close()
+	logger.Printf("[INFO] Successfully joined raft\n")
 	return nil
-}
-
-// Functions for general usage and update of the raft-fsm
-// =============================================================================
-
-// Getstatus returns the current raft-status (leader, candidate or follower)
-func (f *fsm) GetStatus() uint32 {
-	return uint32(f.raft.State())
-}
-
-// GetLeader returns the ip:port of the current leader
-func (f *fsm) GetLeader() string {
-	return f.raft.Leader()
-}
-
-// Join joins a node, located at addr, to this store. The node must be ready to
-// respond to Raft communications at that address.
-func (f *fsm) Join(addr string) error {
-	f.logger.Printf("[INFO] Recieved join request from remote node %s\n", addr)
-	future := f.raft.AddPeer(addr)
-	if future.Error() != nil {
-		f.logger.Printf("[WARN] Unable to add peer: %v\n", future.Error())
-		return future.Error()
-	}
-	f.logger.Printf("[INFO] Successfully joined node %s to the raft.\n", addr)
-	return nil
-}
-
-// GetState returns a copy of the full state as it currently stands.
-func (f *fsm) GetState() State {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	return f.state.DeepCopy()
-}
-
-func (f *fsm) UpdateLiftStatus(ls LiftStatus) error {
-	// Make sure the node currently hold leadership.
-	if f.raft.State() != raft.Leader {
-		f.logger.Printf("[WARN] Unable to update lift status. Not currently leader.\n")
-		return fmt.Errorf("not leader")
-	}
-
-	ls.LastUpdate = time.Now()
-	v, _ := json.Marshal(ls)
-
-	// Create log entry for raft.
-	cmd := &command{
-		Type:  "nodeUpdate",
-		Key:   ls.ID,
-		Value: v,
-	}
-
-	// Encode to json
-	b, err := json.Marshal(cmd)
-	if err != nil {
-		f.logger.Printf("[ERROR] Failed to encode json: %s\n", err.Error())
-		return err
-	}
-
-	// Apply command to raft
-	future := f.raft.Apply(b, 5*time.Second)
-	return future.Error()
-}
-
-func (f *fsm) UpdateButtonStatus(bsu ButtonStatusUpdate) error {
-	// Make sure the node currently hold leadership.
-	if f.raft.State() != raft.Leader {
-		f.logger.Printf("[WARN] Unable to update button status. Not currently leader.\n")
-		return fmt.Errorf("not leader")
-	}
-
-	// Determine Direction
-	var t string
-	if bsu.Dir == "up" || bsu.Dir == "UP" {
-		t = "btnUpUpdate"
-	} else if bsu.Dir == "down" || bsu.Dir == "DOWN" {
-		t = "btnDownUpdate"
-	} else {
-		f.logger.Printf("[ERROR] Unable to parse direction in button update: %s\n", bsu.Dir)
-		return fmt.Errorf("unable to parse direction: %s", bsu.Dir)
-	}
-
-	// Create status
-	status := Status{
-		AssignedTo: "",
-		LastStatus: bsu.Status,
-		LastChange: time.Now(),
-	}
-
-	// Marshal payload to bytes. No need for errorcheck, as it it just recently
-	// been unmarhaled by the same library.
-	v, err := json.Marshal(status)
-	if err != nil {
-		f.logger.Printf("[ERROR] Unable to marshal status: %s\n", err.Error())
-		return err
-	}
-
-	// Create log entry command for raft.
-	cmd := &command{
-		Type:  t,
-		Key:   strconv.Itoa(int(bsu.Floor)),
-		Value: v,
-	}
-
-	// Marshal command to json
-	b, err := json.Marshal(cmd)
-	if err != nil {
-		f.logger.Printf("[ERROR] Failed to marshal raft log command: %s\n", err.Error())
-		return err
-	}
-
-	// Apply command to raft
-	future := f.raft.Apply(b, 5*time.Second)
-	return future.Error()
-
-}
-
-// Internal fsm-function
-// 	These are functions called by the raft apply command in order to recreate
-//	the store based on the raft-log. Functins here are called by the
-//	Apply()-command, and should not be called directly.
-// =============================================================================
-
-// command defines actions that the raft.Log contain, and a series of
-// commands should be able to recreate the State.
-type command struct {
-	/*
-		Types:
-		- "updateFloor": key=<Don't Care>   Value=<floors int>
-		- "nodeUpdate":  key=<ip:raftport>  Value=<struct{ID string, LastFloor, Destination uint}>
-		- "btnUpUpdate": key=<floor>        Value=<struct{AssignedTo, LastStatus string, LastChange time.Time}>
-		- "btnDownUpdate": key=<floor>      Value=<struct{AssignedTo, LastStatus string, LastChange time.Time}>
-	*/
-	Type  string `json:"type,omitempty"`
-	Key   string `json:"key,omitempty"`
-	Value []byte `json:"value,omitempty"`
-}
-
-func (f *fsm) applyUpdateFloor(floor interface{}) interface{} {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	floorInt, _ := floor.(uint)
-	// TODO: Implement test for the floorInt
-	// if !ok {
-	// 	f.logger.Printf("[ERROR] Unable to apply floorUpdate. Bad floor: %v\n", floor)
-	// 	return nil
-	// }
-	f.state.Floors = floorInt
-	return nil
-}
-
-func (f *fsm) applyNodeUpdate(nodeID string, e []byte) interface{} {
-	// Unmarshal liftstatus
-	var lift LiftStatus
-	err := json.Unmarshal(e, &lift)
-	if err != nil {
-		f.logger.Printf("[ERROR] Unable to unmarhal liftStatus: %s\n", err.Error())
-		return fmt.Errorf("unable to unmarshal liftstats")
-	}
-
-	// Update the actual datastore entry
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.state.Nodes[nodeID] = lift
-	return nil
-}
-
-func (f *fsm) applyBtnUpUpdate(floor string, b []byte) interface{} {
-	// Unmarshal ButtonStatusUpdate
-	var status Status
-	err := json.Unmarshal(b, &status)
-	if err != nil {
-		f.logger.Printf("[ERROR] Unable to unmarshal status: %s\n", err.Error())
-		return fmt.Errorf("unable to unmarshal ButtonUpStatusUpdate: %s", err.Error())
-	}
-
-	// Update the actual datastore entry
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.state.HallUpButtons[floor] = status
-	return nil
-}
-
-func (f *fsm) applyBtnDownUpdate(floor string, b []byte) interface{} {
-	// Unmarshal ButtonStatusUpdate
-	var status Status
-	err := json.Unmarshal(b, &status)
-	if err != nil {
-		f.logger.Printf("[ERROR] Unable to unmarshal status: %s\n", err.Error())
-		return fmt.Errorf("unable to unmarshal ButtonDownStatusUpdate: %s", err.Error())
-	}
-
-	// Update the actual datastore entry
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.state.HallDownButtons[floor] = status
-	return nil
-}
-
-func getOutboundIP() string {
-	conn, err := net.Dial("udp", "8.8.8.8:80")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer conn.Close()
-
-	localAddr := conn.LocalAddr().String()
-	idx := strings.LastIndex(localAddr, ":")
-
-	return localAddr[0:idx]
 }

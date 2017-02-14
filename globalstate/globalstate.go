@@ -56,20 +56,6 @@ type Config struct {
 	DisableRaftLogging bool
 }
 
-var defaultConfig = Config{
-	RaftPort:           8000,
-	InitalPeer:         "",
-	OwnIP:              "localhost",
-	OnPromotion:        func() {},
-	OnDemotion:         func() {},
-	OnAquiredConsensus: func() {},
-	OnLostConsensus:    func() {},
-	OnIncomingCommand:  func(f int, d string) {},
-	CostFunction:       func(s State, f int, d string) string { return "localhost:8000" },
-	Logger:             log.New(os.Stderr, "", log.LstdFlags),
-	DisableRaftLogging: false,
-}
-
 // LiftStatusUpdate defines an message with which you intend to update the global store with.
 type LiftStatusUpdate struct {
 	CurrentFloor uint
@@ -89,13 +75,13 @@ type ButtonStatusUpdate struct {
 // =============================================================================
 
 // UpdateLiftStatus asdasdas asdasd
-func UpdateLiftStatus(ls LiftStatusUpdate) error {
-	if !theFSM.initDone {
+func (f *FSM) UpdateLiftStatus(ls LiftStatusUpdate) error {
+	if !f.initDone {
 		return fmt.Errorf("globalstate not yet initalized")
 	}
 	// Convert to liftStatus
 	status := LiftStatus{
-		ID:                         theFSM.ownID,
+		ID:                         f.wrapper.ownID,
 		LastFloor:                  ls.CurrentFloor,
 		Direction:                  ls.CurrentDir,
 		DestinationFloor:           ls.DstFloor,
@@ -106,7 +92,7 @@ func UpdateLiftStatus(ls LiftStatusUpdate) error {
 	json.NewEncoder(b).Encode(status)
 
 	// Get leader communication endpoint
-	leader, err := leaderComEndpoint()
+	leader, err := f.wrapper.leaderComEndpoint()
 	if err != nil {
 		return err
 	}
@@ -122,20 +108,20 @@ func UpdateLiftStatus(ls LiftStatusUpdate) error {
 
 // UpdateButtonStatus update the globalt store  with the supplied button update.
 // If unable to reach the raft-leader it will return an error.
-func UpdateButtonStatus(bs ButtonStatusUpdate) error {
-	if !theFSM.initDone {
+func (f *FSM) UpdateButtonStatus(bs ButtonStatusUpdate) error {
+	if !f.initDone {
 		return fmt.Errorf("globalstate not yet initalized")
 	}
 	// Marshal for sending as json
 	b := new(bytes.Buffer)
 	err := json.NewEncoder(b).Encode(bs)
 	if err != nil {
-		theFSM.logger.Printf("[ERROR] Unable to marshal button status update: %s\n", err.Error())
+		f.logger.Printf("[ERROR] Unable to marshal button status update: %s\n", err.Error())
 		return err
 	}
 
 	// Get leader communication endpoint
-	leader, err := leaderComEndpoint()
+	leader, err := f.wrapper.leaderComEndpoint()
 	if err != nil {
 		return err
 	}
@@ -144,7 +130,7 @@ func UpdateButtonStatus(bs ButtonStatusUpdate) error {
 	url := fmt.Sprintf("http://%s/update/button", leader)
 	res, err := http.Post(url, "application/json; charset=utf-8", b)
 	if err != nil {
-		theFSM.logger.Printf("[ERROR] Unable to send button status update to leader: %s\n", err.Error())
+		f.logger.Printf("[ERROR] Unable to send button status update to leader: %s\n", err.Error())
 		return err
 	}
 	io.Copy(os.Stdout, res.Body)
@@ -152,19 +138,19 @@ func UpdateButtonStatus(bs ButtonStatusUpdate) error {
 }
 
 // GetState returns a copy of the current cluster state.
-func GetState() (State, error) {
-	if !theFSM.initDone {
+func (f *FSM) GetState() (State, error) {
+	if !f.initDone {
 		return State{}, fmt.Errorf("globalstate not yet initalized")
 	}
-	return theFSM.GetState(), nil
+	return f.wrapper.GetState(), nil
 }
 
 // Helper functions
 // =============================================================================
-func leaderComEndpoint() (string, error) {
-	leaderRaftAddr := theFSM.GetLeader()
+func (rw *raftwrapper) leaderComEndpoint() (string, error) {
+	leaderRaftAddr := rw.GetLeader()
 	if leaderRaftAddr == "" {
-		theFSM.logger.Printf("[ERROR] Cannot send button status. No current leader.")
+		rw.logger.Printf("[ERROR] Cannot send button status. No current leader.")
 		return "", fmt.Errorf("Cannot send button status. No current leader")
 	}
 	parts := strings.Split(leaderRaftAddr, ":")

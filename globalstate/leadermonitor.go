@@ -13,24 +13,24 @@ import (
 	"github.com/hashicorp/raft"
 )
 
-func (f *fsm) LeaderMonitor() {
+func (rw *raftwrapper) LeaderMonitor() {
 	scanInterval := 500 * time.Millisecond
 	orderTimeout := 7 * time.Second
-	leaderCh := f.raft.LeaderCh()
-	isLeader := f.raft.State() == raft.Leader
+	leaderCh := rw.raft.LeaderCh()
+	isLeader := rw.raft.State() == raft.Leader
 
 	// Check inital role and invoke corresponding callback
 	if isLeader {
-		f.config.OnPromotion()
+		rw.config.OnPromotion()
 	} else {
-		f.config.OnDemotion()
+		rw.config.OnDemotion()
 	}
 
 	for {
 		if !isLeader {
 			// Blocks until assuming leadership
 			isLeader = <-leaderCh
-			f.config.OnPromotion()
+			rw.config.OnPromotion()
 		}
 
 		// Wait for either loosing leadership or a interval
@@ -39,30 +39,31 @@ func (f *fsm) LeaderMonitor() {
 			isLeader = l
 			// Call status change callbacks
 			if !isLeader {
-				f.config.OnDemotion()
+				rw.config.OnDemotion()
 			}
 
 		case <-time.After(scanInterval):
+		case <-rw.shutdown:
+			return
 		}
 
 		// Retrieve a working copy of the state
-		f.mu.Lock()
-		state := f.state.DeepCopy()
-		f.mu.Unlock()
+		rw.mu.Lock()
+		state := rw.state.DeepCopy()
+		rw.mu.Unlock()
 
 		// Inspect unnassigned or orders that have timed out
 		unassignedBtns := getUnassignedOrders(state)
 		expiredBtns := getTimedOutOrders(state, orderTimeout)
 
 		for _, b := range unassignedBtns {
-			lowestCostPeer := f.config.CostFunction(state, b.Floor, b.Dir)
+			lowestCostPeer := rw.config.CostFunction(state, b.Floor, b.Dir)
 			sendCmd(b, lowestCostPeer)
 		}
 		for _, b := range expiredBtns {
-			lowestCostPeer := f.config.CostFunction(state, b.Floor, b.Dir)
+			lowestCostPeer := rw.config.CostFunction(state, b.Floor, b.Dir)
 			sendCmd(b, lowestCostPeer)
 		}
-
 	}
 }
 
