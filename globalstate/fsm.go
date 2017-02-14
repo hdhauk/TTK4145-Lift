@@ -21,7 +21,7 @@ type FSM struct {
 	initDone bool
 }
 
-// Init deras
+// Init sets up and start the FSM
 func (f *FSM) Init(config Config) error {
 	// Parse ports
 	rPort := config.RaftPort
@@ -84,7 +84,17 @@ func (f *FSM) Init(config Config) error {
 
 	f.initDone = true
 	return nil
+}
 
+// Close shuts down the FSM
+func (f *FSM) Close() {
+	close(f.wrapper.shutdown)
+	f.logger.Println("[INFO] Shutting down raft")
+	future := f.wrapper.raft.Shutdown()
+	if future.Error() != nil {
+		f.logger.Fatalf("[ERROR] Failed to close FSM: %v", future.Error())
+	}
+	//f.comm.Close()
 }
 
 func validateConfig(c *Config) error {

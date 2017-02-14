@@ -33,6 +33,7 @@ type raftwrapper struct {
 	logger   *log.Logger
 	ownID    string
 	config   Config
+	shutdown chan interface{}
 }
 
 // newFSM return a new raft-enabled finite state machine.
@@ -47,6 +48,7 @@ func newFSM(rPortStr string) *raftwrapper {
 		RaftPort: rPortStr,
 		state:    s,
 		logger:   log.New(os.Stderr, "[globalstate] ", log.Ltime|log.Lshortfile),
+		shutdown: make(chan interface{}),
 	}
 }
 

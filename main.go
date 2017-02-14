@@ -22,6 +22,8 @@ var simPort string
 var r = 1024 + rand.Intn(64510)
 var raftPort = r
 
+var gs globalstate.FSM
+
 func main() {
 	mainlogger := log.New(os.Stderr, "[main] ", log.Ltime|log.Lshortfile)
 	// Parse arg flags
@@ -86,19 +88,20 @@ func main() {
 			break
 		}
 	}
-	err = globalstate.Init(globalstateConfig)
+	gs = globalstate.FSM{}
+	err = gs.Init(globalstateConfig)
 	if err != nil {
 		mainlogger.Printf("[ERROR] Failed to initalize globalstore: %s", err.Error())
 	}
 
 	// Start syncinc button leds with the global state.
-	go syncBtnLEDs()
+	go syncBtnLEDs(gs)
 
 	// Block forever
 	select {}
 }
 
-func syncBtnLEDs() {
+func syncBtnLEDs(globalstate globalstate.FSM) {
 	for {
 		time.Sleep(500 * time.Millisecond)
 		s, err := globalstate.GetState()

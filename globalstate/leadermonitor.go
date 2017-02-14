@@ -43,6 +43,8 @@ func (rw *raftwrapper) LeaderMonitor() {
 			}
 
 		case <-time.After(scanInterval):
+		case <-rw.shutdown:
+			return
 		}
 
 		// Retrieve a working copy of the state
@@ -62,7 +64,6 @@ func (rw *raftwrapper) LeaderMonitor() {
 			lowestCostPeer := rw.config.CostFunction(state, b.Floor, b.Dir)
 			sendCmd(b, lowestCostPeer)
 		}
-
 	}
 }
 
