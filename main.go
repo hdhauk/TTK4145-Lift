@@ -12,6 +12,7 @@ import (
 	"bitbucket.org/halvor_haukvik/ttk4145-elevator/driver"
 	"bitbucket.org/halvor_haukvik/ttk4145-elevator/globalstate"
 	"bitbucket.org/halvor_haukvik/ttk4145-elevator/peerdiscovery"
+	"bitbucket.org/halvor_haukvik/ttk4145-elevator/statetools"
 )
 
 // Command line parameters
@@ -75,8 +76,8 @@ func main() {
 		// OnDemotion:         func() { fmt.Println("DEMOTED, :(") },
 		OnAquiredConsensus: func() { fmt.Println("Aquired RAFT-consensus") },
 		OnLostConsensus:    func() { fmt.Println("Lost RAFT-consensus") },
-		OnIncomingCommand:  onIncommingCommand,
-		CostFunction:       func(s globalstate.State, f int, d string) string { return "localhost:8003" },
+		OnIncomingCommand:  onIncomingCommand,
+		CostFunction:       statetools.CostFunction,
 		Logger:             log.New(os.Stderr, "[globalstate] ", log.Ltime|log.Lshortfile),
 		DisableRaftLogging: true,
 	}

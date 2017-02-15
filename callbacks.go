@@ -10,8 +10,9 @@ import (
 
 // Globalstate callbacks
 // =============================================================================
-func onIncommingCommand(f int, dir string) {
+func onIncomingCommand(f int, dir string) {
 	fmt.Printf("Supposed to go to floor %d, somebody want %s from there\n", f, dir)
+	// TODO: Doublecheck if the lift isn't currently busy
 	driver.GoToFloor(f, dir)
 }
 
@@ -30,6 +31,7 @@ func onBtnPress(b driver.Btn) {
 	err := gs.UpdateButtonStatus(bsu)
 	if err != nil {
 		fmt.Println("Failed to send button update...")
+		// TODO: Add to local store
 	}
 	driver.BtnLEDSet(b)
 }
@@ -44,6 +46,11 @@ func onNewStatus(f, dstFloor int, dstDir, dir string) {
 	if err := gs.UpdateLiftStatus(lsu); err != nil {
 		fmt.Println("Failed to send liftupdate...")
 	}
+	// Check lift reached a foor and if it can pick someone up there
+	// TODO
+	// --> GetState
+	// --> statetools.ShouldStopAndPickup(state, f, dir)
+
 }
 
 func onDstReached(b driver.Btn) {

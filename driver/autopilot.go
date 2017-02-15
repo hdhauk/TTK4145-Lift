@@ -119,6 +119,7 @@ func autoPilot(apFloorCh <-chan int, driverInitDone chan error) {
 			d2d := dirToDst(lastFloor, destination.floor)
 			driver.setMotorDir(d2d)
 			setCurrentDir(d2d)
+
 		case <-time.After(5 * time.Second):
 			cfg.OnNewStatus(lastFloor, dstFloor.floor, dstFloor.dir, currentDir)
 		}
