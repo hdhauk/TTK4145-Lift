@@ -30,7 +30,7 @@ func (f *FSM) Init(config Config) error {
 	cPortStr := strconv.Itoa(cPort)
 
 	// Creating new FSM
-	f.wrapper = newFSM(rPortStr)
+	f.wrapper = newRaftWrapper(rPortStr, config.Floors)
 
 	// Safely store the config
 	if err := validateConfig(&config); err != nil {

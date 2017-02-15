@@ -46,6 +46,7 @@ type Config struct {
 	RaftPort           int
 	InitalPeer         string
 	OwnIP              string
+	Floors             int
 	OnPromotion        func()
 	OnDemotion         func()
 	OnAquiredConsensus func()
@@ -66,9 +67,10 @@ type LiftStatusUpdate struct {
 
 // ButtonStatusUpdate defines a message with which you intend to update the global store with.
 type ButtonStatusUpdate struct {
-	Floor  uint
-	Dir    string
-	Status string
+	Floor      uint
+	Dir        string
+	Status     string
+	AssignedTo string
 }
 
 // Public facing functions

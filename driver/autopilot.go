@@ -21,17 +21,17 @@ func autoPilot(apFloorCh <-chan int, driverInitDone chan error) {
 
 	// Drive up to a well defined floor
 	var lastFloor int
-	var dstFloor dst
+	var currentDst dst
 	select {
 	case f := <-apFloorCh:
 		lastFloor = f
-		dstFloor = dst{floor: f, dir: ""}
+		currentDst = dst{floor: f, dir: ""}
 	case <-time.After(1 * time.Second):
 		driver.setMotorDir(up)
 		lastFloor = <-apFloorCh
 		driver.setMotorDir(stop)
 		currentDir = stop
-		dstFloor.floor = lastFloor
+		currentDst.floor = lastFloor
 	}
 	cfg.Logger.Printf("[INFO] Ready with elevator stationary in floor: %v\n", lastFloor)
 	close(driverInitDone)
@@ -51,29 +51,29 @@ func autoPilot(apFloorCh <-chan int, driverInitDone chan error) {
 						-> If everything is OK carry on
 			*/
 			// Case 1
-			if f == dstFloor.floor {
-				cfg.OnNewStatus(f, dstFloor.floor, dstFloor.dir, currentDir)
-				driver.setMotorDir(stop)
+			if f == currentDst.floor {
 				setCurrentDir(stop)
-				dstFloor.dir = ""
-				cfg.OnDstReached(newBtn(f, dstFloor.dir))
-				cfg.OnNewStatus(lastFloor, dstFloor.floor, dstFloor.dir, currentDir)
+				cfg.OnNewStatus(lastFloor, currentDir, currentDst.floor, currentDst.dir)
+				driver.setMotorDir(stop)
+				cfg.OnDstReached(newBtn(currentDst.floor, currentDst.dir))
+				currentDst.dir = ""
+				cfg.OnNewStatus(lastFloor, stop, currentDst.floor, currentDst.dir)
 				openDoor()
 				break selector
 			}
 
 			// Case 2
-			if dirToDst(f, dstFloor.floor) != currentDir {
-				newDir := dirToDst(lastFloor, dstFloor.floor)
+			if dirToDst(f, currentDst.floor) != currentDir {
+				newDir := dirToDst(lastFloor, currentDst.floor)
+				setCurrentDir(newDir)
 				cfg.Logger.Printf(yellow+"[WARN] Unexpected direction value. Correcting to: %s"+white, newDir)
 				driver.setMotorDir(newDir)
-				setCurrentDir(newDir)
-				cfg.OnNewStatus(f, dstFloor.floor, dstFloor.dir, newDir)
+				cfg.OnNewStatus(f, currentDir, currentDst.floor, currentDst.dir)
 			}
 
 			// New destination given
-		case destination := <-floorDstCh:
-			dstFloor = destination
+		case d := <-floorDstCh:
+			currentDst = d
 			/*
 				- Case 1: My new destination is coincidentaly the elevator currenly is parked
 						-> Open the door
@@ -82,13 +82,13 @@ func autoPilot(apFloorCh <-chan int, driverInitDone chan error) {
 				- Case 3: My new destination is somewhere else
 						-> Determine in what direction the target is -> Go in that direction
 			*/
-			if destination.floor == lastFloor {
+			if currentDst.floor == lastFloor {
 				switch currentDir {
 				// Case 1
 				case stop:
-					dstFloor.dir = ""
-					cfg.OnDstReached(newBtn(lastFloor, destination.dir))
-					cfg.OnNewStatus(lastFloor, dstFloor.floor, dstFloor.dir, currentDir)
+					cfg.OnDstReached(newBtn(currentDst.floor, currentDst.dir))
+					currentDst.dir = ""
+					cfg.OnNewStatus(lastFloor, currentDir, currentDst.floor, currentDst.dir)
 					openDoor()
 					break selector
 				// Case 2a
@@ -115,12 +115,12 @@ func autoPilot(apFloorCh <-chan int, driverInitDone chan error) {
 			}
 
 			// Case 3
-			d2d := dirToDst(lastFloor, destination.floor)
+			d2d := dirToDst(lastFloor, d.floor)
 			driver.setMotorDir(d2d)
 			setCurrentDir(d2d)
 
 		case <-time.After(4 * time.Second):
-			cfg.OnNewStatus(lastFloor, dstFloor.floor, dstFloor.dir, currentDir)
+			cfg.OnNewStatus(lastFloor, currentDir, currentDst.floor, currentDst.dir)
 		}
 	}
 }
@@ -142,11 +142,10 @@ func openDoor() {
 }
 
 func newBtn(f int, dir string) Btn {
-	switch dir {
-	case "up":
-		return Btn{Floor: f, Type: HallUp}
-	case "down":
+	if dir == "down" || dir == "DOWN" {
 		return Btn{Floor: f, Type: HallDown}
+	} else if dir == "up" || dir == "UP" {
+		return Btn{Floor: f, Type: HallUp}
 	}
 	return Btn{}
 }

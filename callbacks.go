@@ -35,7 +35,7 @@ func onBtnPress(b driver.Btn) {
 	driver.BtnLEDSet(b)
 }
 
-func onNewStatus(f, dstFloor int, dstDir, dir string) {
+func onNewStatus(f int, dir string, dstFloor int, dstDir string) {
 	lsu := globalstate.LiftStatusUpdate{
 		CurrentFloor: uint(f),
 		CurrentDir:   dir,

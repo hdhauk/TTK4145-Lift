@@ -36,10 +36,10 @@ type raftwrapper struct {
 	shutdown chan interface{}
 }
 
-// newFSM return a new raft-enabled finite state machine.
-func newFSM(rPortStr string) *raftwrapper {
+// newRaftWrapper return a new raft-enabled finite state machine.
+func newRaftWrapper(rPortStr string, floors int) *raftwrapper {
 	s := State{
-		Floors:          4,
+		Floors:          uint(floors),
 		Nodes:           make(map[string]LiftStatus),
 		HallUpButtons:   make(map[string]Status),
 		HallDownButtons: make(map[string]Status),
@@ -245,7 +245,7 @@ func (f *raftwrapper) UpdateButtonStatus(bsu ButtonStatusUpdate) error {
 
 	// Create status
 	status := Status{
-		AssignedTo: "",
+		AssignedTo: bsu.AssignedTo,
 		LastStatus: bsu.Status,
 		LastChange: time.Now(),
 	}
@@ -340,6 +340,10 @@ func (f *raftwrapper) applyBtnUpUpdate(floor string, b []byte) interface{} {
 	// Update the actual datastore entry
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	// Discard any transitions from "done" --> "assigned"
+	if f.state.HallUpButtons[floor].LastStatus == BtnStateDone && status.LastStatus == BtnStateAssigned {
+		return nil
+	}
 	f.state.HallUpButtons[floor] = status
 	return nil
 }
@@ -356,6 +360,11 @@ func (f *raftwrapper) applyBtnDownUpdate(floor string, b []byte) interface{} {
 	// Update the actual datastore entry
 	f.mu.Lock()
 	defer f.mu.Unlock()
+
+	// Discard any transitions from "done" --> "assigned"
+	if f.state.HallDownButtons[floor].LastStatus == BtnStateDone && status.LastStatus == BtnStateAssigned {
+		return nil
+	}
 	f.state.HallDownButtons[floor] = status
 	return nil
 }

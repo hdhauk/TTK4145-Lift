@@ -57,6 +57,7 @@ func (rw *raftwrapper) LeaderMonitor(updateBtnStatus func(bs ButtonStatusUpdate)
 		unassignedBtns := getUnassignedOrders(state)
 		expiredBtns := getTimedOutOrders(state, orderTimeout)
 
+		// Assign to elevators based on cost
 		for _, b := range expiredBtns {
 			lowestCostPeer := rw.config.CostFunction(state, b.Floor, b.Dir)
 			if lowestCostPeer == "" {
@@ -155,9 +156,10 @@ func updateToAssigned(b btn,
 	dstNode string,
 	updateBtnStatus func(bs ButtonStatusUpdate) error) error {
 	bsu := ButtonStatusUpdate{
-		Floor:  uint(b.Floor),
-		Dir:    b.Dir,
-		Status: BtnStateAssigned,
+		Floor:      uint(b.Floor),
+		Dir:        b.Dir,
+		Status:     BtnStateAssigned,
+		AssignedTo: dstNode,
 	}
 	fmt.Printf("Sending assigned!\n")
 	return updateBtnStatus(bsu)

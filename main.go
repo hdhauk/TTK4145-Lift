@@ -53,7 +53,7 @@ func main() {
 	cfg := driver.Config{
 		SimMode:      true,
 		SimPort:      simPort,
-		Floors:       4,
+		Floors:       9,
 		OnBtnPress:   onBtnPress,
 		OnNewStatus:  onNewStatus,
 		OnDstReached: onDstReached,
@@ -72,6 +72,7 @@ func main() {
 	globalstateConfig := globalstate.Config{
 		RaftPort: raftPort,
 		OwnIP:    ip,
+		Floors:   9,
 		// OnPromotion:        func() { fmt.Println("PROMOTED!:)") },
 		// OnDemotion:         func() { fmt.Println("DEMOTED, :(") },
 		OnAquiredConsensus: func() { fmt.Println("Aquired RAFT-consensus") },

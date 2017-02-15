@@ -89,8 +89,8 @@ func Test_TwoNodeConsensusWithTraffic(t *testing.T) {
 	raft2 := FSM{}
 	raft2.Init(config2)
 
-	raft1.UpdateButtonStatus(ButtonStatusUpdate{2, "up", "done"})
-	raft2.UpdateButtonStatus(ButtonStatusUpdate{1, "down", "assigned"})
+	raft1.UpdateButtonStatus(ButtonStatusUpdate{2, "up", "done", ""})
+	raft2.UpdateButtonStatus(ButtonStatusUpdate{1, "down", "assigned", "localhost:90"})
 	raft1.UpdateLiftStatus(LiftStatusUpdate{1, "stop", 2, ""})
 	raft2.UpdateLiftStatus(LiftStatusUpdate{3, "down", 1, "up"})
 
@@ -133,7 +133,7 @@ func Test_ThreeNodeClusterWithRedirect(t *testing.T) {
 	raft3.Init(config3)
 
 	blankState, _ := raft1.GetState()
-	raft1.UpdateButtonStatus(ButtonStatusUpdate{2, "up", "done"})
+	raft1.UpdateButtonStatus(ButtonStatusUpdate{2, "up", "done", ""})
 	time.Sleep(1 * time.Second)
 	state1, _ := raft1.GetState()
 	state2, _ := raft2.GetState()
