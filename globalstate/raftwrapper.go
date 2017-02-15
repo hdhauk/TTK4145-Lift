@@ -180,7 +180,6 @@ func (f *raftwrapper) GetLeader() string {
 // Join joins a node, located at addr, to this store. The node must be ready to
 // respond to Raft communications at that address.
 func (f *raftwrapper) Join(addr string) error {
-	f.logger.Printf("[INFO] Recieved join request from remote node %s\n", addr)
 	future := f.raft.AddPeer(addr)
 	if future.Error() != nil {
 		f.logger.Printf("[WARN] Unable to add peer: %v\n", future.Error())

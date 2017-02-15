@@ -50,13 +50,14 @@ func autoPilot(apFloorCh <-chan int, driverInitDone chan error) {
 						-> Make sure the target destination is floorDstChin the direction of travel
 						-> If everything is OK carry on
 			*/
-			cfg.Logger.Printf("[INFO] At floor: %v\t dstFloor: %v\n", f, dstFloor)
 			// Case 1
 			if f == dstFloor.floor {
 				cfg.OnNewStatus(f, dstFloor.floor, dstFloor.dir, currentDir)
 				driver.setMotorDir(stop)
 				setCurrentDir(stop)
+				dstFloor.dir = ""
 				cfg.OnDstReached(newBtn(f, dstFloor.dir))
+				cfg.OnNewStatus(lastFloor, dstFloor.floor, dstFloor.dir, currentDir)
 				openDoor()
 				break selector
 			}
@@ -85,13 +86,13 @@ func autoPilot(apFloorCh <-chan int, driverInitDone chan error) {
 				switch currentDir {
 				// Case 1
 				case stop:
-					cfg.Logger.Printf("[INFO] New destination given (%+v). Case 1: Stopping...and opening door.\n", destination)
+					dstFloor.dir = ""
 					cfg.OnDstReached(newBtn(lastFloor, destination.dir))
+					cfg.OnNewStatus(lastFloor, dstFloor.floor, dstFloor.dir, currentDir)
 					openDoor()
 					break selector
 				// Case 2a
 				case up:
-					cfg.Logger.Printf("autopilot.go: New destination given (%+v). Case 2a: Going down...\n", destination)
 					// NOTE: The timer make sure that the elevator have actually left
 					// the sensor. Otherwise it will not trigger the floor sensor,
 					// and in rare cases will end up going beyond the area of operation.
@@ -102,7 +103,6 @@ func autoPilot(apFloorCh <-chan int, driverInitDone chan error) {
 					break selector
 				// Case 2b
 				case down:
-					cfg.Logger.Printf("autopilot.go: New destination given (%+v). Case 2b: Going up...\n", destination)
 					// NOTE: The timer make sure that the elevator have actually left
 					// the sensor. Otherwise it will not trigger the floor sensor,
 					// and in rare cases will end up going beyond the area of operation.
@@ -115,12 +115,11 @@ func autoPilot(apFloorCh <-chan int, driverInitDone chan error) {
 			}
 
 			// Case 3
-			cfg.Logger.Printf("autopilot.go: New destination given (%v). Case 3\n", destination)
 			d2d := dirToDst(lastFloor, destination.floor)
 			driver.setMotorDir(d2d)
 			setCurrentDir(d2d)
 
-		case <-time.After(5 * time.Second):
+		case <-time.After(4 * time.Second):
 			cfg.OnNewStatus(lastFloor, dstFloor.floor, dstFloor.dir, currentDir)
 		}
 	}

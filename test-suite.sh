@@ -24,13 +24,13 @@ EOF
     "1")
         echo "Launching 4 simulators"
         cd driver/simulators/simulator1-53566
-        gnome-terminal -e "rdmd sim_server.d" --geometry 50x10+200+100 --title="sim53566"
+        gnome-terminal -e "rdmd sim_server.d" --geometry 50x10+10+100 --title="sim53566"
         cd ../simulator2-53567
-        gnome-terminal -e "rdmd sim_server.d" --geometry 50x10+200+320 --title="sim53567"
+        gnome-terminal -e "rdmd sim_server.d" --geometry 50x10+10+320 --title="sim53567"
         cd ../simulator3-53568
-        gnome-terminal -e "rdmd sim_server.d" --geometry 50x10+200+540 --title="sim53568"
+        gnome-terminal -e "rdmd sim_server.d" --geometry 50x10+10+540 --title="sim53568"
         cd ../simulator4-53569
-        gnome-terminal -e "rdmd sim_server.d" --geometry 50x10+200+760 --title="sim53569"
+        gnome-terminal -e "rdmd sim_server.d" --geometry 50x10+10+760 --title="sim53569"
         cd ../../..
 
         read -p "Press any key to continue when simulators are ready... " -n1 -s

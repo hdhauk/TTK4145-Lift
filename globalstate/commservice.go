@@ -176,7 +176,6 @@ func (s *commService) HandleLiftUpdate(w http.ResponseWriter, r *http.Request) {
 	if err := s.store.UpdateLiftStatus(status); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 	}
-	s.logger.Printf("[INFO] Successfully accepted lift status update.")
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -201,7 +200,6 @@ func (s *commService) HandleButtonUpdate(w http.ResponseWriter, r *http.Request)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	s.logger.Printf("[INFO] Successfully accepted button status update.")
 	w.WriteHeader(http.StatusOK)
 }
 

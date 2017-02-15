@@ -3,21 +3,23 @@ package statetools
 import (
 	"testing"
 	"time"
+
+	"bitbucket.org/halvor_haukvik/ttk4145-elevator/globalstate"
 )
 
 func TestPickup(t *testing.T) {
 
-	var s = State{
-		HallDownButtons: make(map[string]Status),
-		HallUpButtons:   make(map[string]Status),
+	var s = globalstate.State{
+		HallDownButtons: make(map[string]globalstate.Status),
+		HallUpButtons:   make(map[string]globalstate.Status),
 	}
 
-	s.HallUpButtons["1"] = Status{
+	s.HallUpButtons["1"] = globalstate.Status{
 		AssignedTo: "192.168.0.1:80",
 		LastStatus: "assigned",
 		LastChange: time.Now().Add(-2 * time.Second),
 	}
-	s.HallUpButtons["2"] = Status{
+	s.HallUpButtons["2"] = globalstate.Status{
 		AssignedTo: "192.168.0.1:80",
 		LastStatus: "done",
 		LastChange: time.Now().Add(-2 * time.Second),

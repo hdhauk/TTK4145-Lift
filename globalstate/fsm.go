@@ -79,7 +79,7 @@ func (f *FSM) Init(config Config) error {
 	time.Sleep(4 * time.Second)
 
 	// Start workers
-	go f.wrapper.LeaderMonitor()
+	go f.wrapper.LeaderMonitor(f.UpdateButtonStatus)
 	go f.wrapper.ConsensusMonitor()
 
 	f.initDone = true

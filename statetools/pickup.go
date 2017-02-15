@@ -1,11 +1,15 @@
 package statetools
 
-import "strconv"
+import (
+	"strconv"
+
+	"bitbucket.org/halvor_haukvik/ttk4145-elevator/globalstate"
+)
 
 // ShouldStopAndPickup asd
-func ShouldStopAndPickup(s State, currentFloor int, currentDir string) bool {
+func ShouldStopAndPickup(s globalstate.State, currentFloor int, currentDir string) bool {
 	// Extract applicable buttons
-	var buttons map[string]Status
+	var buttons map[string]globalstate.Status
 	if currentDir == "up" {
 		buttons = s.HallUpButtons
 	} else if currentDir == "down" {

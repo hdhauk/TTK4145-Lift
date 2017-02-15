@@ -11,7 +11,6 @@ import (
 // Globalstate callbacks
 // =============================================================================
 func onIncomingCommand(f int, dir string) {
-	fmt.Printf("Supposed to go to floor %d, somebody want %s from there\n", f, dir)
 	// TODO: Doublecheck if the lift isn't currently busy
 	driver.GoToFloor(f, dir)
 }

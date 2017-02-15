@@ -8,12 +8,13 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/hashicorp/raft"
 )
 
-func (rw *raftwrapper) LeaderMonitor() {
+func (rw *raftwrapper) LeaderMonitor(updateBtnStatus func(bs ButtonStatusUpdate) error) {
 	scanInterval := 500 * time.Millisecond
 	orderTimeout := 7 * time.Second
 	leaderCh := rw.raft.LeaderCh()
@@ -56,12 +57,23 @@ func (rw *raftwrapper) LeaderMonitor() {
 		unassignedBtns := getUnassignedOrders(state)
 		expiredBtns := getTimedOutOrders(state, orderTimeout)
 
-		for _, b := range unassignedBtns {
-			lowestCostPeer := rw.config.CostFunction(state, b.Floor, b.Dir)
-			sendCmd(b, lowestCostPeer)
-		}
 		for _, b := range expiredBtns {
 			lowestCostPeer := rw.config.CostFunction(state, b.Floor, b.Dir)
+			if lowestCostPeer == "" {
+				continue
+			}
+			updateToAssigned(b, lowestCostPeer, updateBtnStatus)
+			time.Sleep(200 * time.Millisecond)
+			sendCmd(b, lowestCostPeer)
+
+		}
+		for _, b := range unassignedBtns {
+			lowestCostPeer := rw.config.CostFunction(state, b.Floor, b.Dir)
+			if lowestCostPeer == "" {
+				continue
+			}
+			updateToAssigned(b, lowestCostPeer, updateBtnStatus)
+			time.Sleep(200 * time.Millisecond)
 			sendCmd(b, lowestCostPeer)
 		}
 	}
@@ -117,13 +129,36 @@ func getTimedOutOrders(s State, timeout time.Duration) []btn {
 }
 
 func sendCmd(b btn, dstNode string) error {
+	// Infer address from id (communication endpoint in port above raft-port)
+	if strings.Contains(dstNode, ":") == false {
+		return fmt.Errorf("bad destination node")
+	}
+	parts := strings.Split(dstNode, ":")
+	raftPort, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return fmt.Errorf("bad destination node: %s", err.Error())
+	}
+	addr := fmt.Sprintf("%s:%d", parts[0], raftPort+1)
+
 	// Marhsal to json
 	buf := new(bytes.Buffer)
 	json.NewEncoder(buf).Encode(b)
-	res, err := http.Post(fmt.Sprintf("http://%s/cmd", dstNode), "application/json; charset=utf-8", buf)
+	res, err := http.Post(fmt.Sprintf("http://%s/cmd", addr), "application/json; charset=utf-8", buf)
 	if err != nil {
 		return err
 	}
 	io.Copy(os.Stdout, res.Body)
 	return nil
+}
+
+func updateToAssigned(b btn,
+	dstNode string,
+	updateBtnStatus func(bs ButtonStatusUpdate) error) error {
+	bsu := ButtonStatusUpdate{
+		Floor:  uint(b.Floor),
+		Dir:    b.Dir,
+		Status: BtnStateAssigned,
+	}
+	fmt.Printf("Sending assigned!\n")
+	return updateBtnStatus(bsu)
 }
