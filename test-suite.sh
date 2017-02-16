@@ -9,6 +9,7 @@ do
 --------------------------------------------------------------
   Please enter your choice:
 
+  Spawn 4x simulators                                      (0)
   Spawn 4x simulator and elevator controller pairs         (1)
   Send elevator 1 upward                                   (2)
   Hold HallUp 1st floor for 2 sec in elevator 1            (3)
@@ -21,6 +22,18 @@ Choose and option:
 EOF
     read -n1 -s
     case "$REPLY" in
+    "0")
+        echo "Launching 4 simulators"
+        cd driver/simulators/simulator1-53566
+        gnome-terminal -e "rdmd sim_server.d" --geometry 50x10+10+100 --title="sim53566"
+        cd ../simulator2-53567
+        gnome-terminal -e "rdmd sim_server.d" --geometry 50x10+10+320 --title="sim53567"
+        cd ../simulator3-53568
+        gnome-terminal -e "rdmd sim_server.d" --geometry 50x10+10+540 --title="sim53568"
+        cd ../simulator4-53569
+        gnome-terminal -e "rdmd sim_server.d" --geometry 50x10+10+760 --title="sim53569"
+        cd ../../..
+        ;;
     "1")
         echo "Launching 4 simulators"
         cd driver/simulators/simulator1-53566

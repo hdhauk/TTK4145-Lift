@@ -57,6 +57,7 @@ func autoPilot(apFloorCh <-chan int, driverInitDone chan error) {
 				driver.setMotorDir(stop)
 				cfg.OnDstReached(newBtn(currentDst.floor, currentDst.dir))
 				currentDst.dir = ""
+				// Trigger newStatus callback, so it doesn't have to wait for the door to close
 				cfg.OnNewStatus(lastFloor, stop, currentDst.floor, currentDst.dir)
 				openDoor()
 				break selector
@@ -70,6 +71,9 @@ func autoPilot(apFloorCh <-chan int, driverInitDone chan error) {
 				driver.setMotorDir(newDir)
 				cfg.OnNewStatus(f, currentDir, currentDst.floor, currentDst.dir)
 			}
+
+			// Trigger new status callback
+			cfg.OnNewStatus(lastFloor, currentDir, currentDst.floor, currentDst.dir)
 
 			// New destination given
 		case d := <-floorDstCh:
@@ -88,7 +92,6 @@ func autoPilot(apFloorCh <-chan int, driverInitDone chan error) {
 				case stop:
 					cfg.OnDstReached(newBtn(currentDst.floor, currentDst.dir))
 					currentDst.dir = ""
-					cfg.OnNewStatus(lastFloor, currentDir, currentDst.floor, currentDst.dir)
 					openDoor()
 					break selector
 				// Case 2a
@@ -119,6 +122,8 @@ func autoPilot(apFloorCh <-chan int, driverInitDone chan error) {
 			driver.setMotorDir(d2d)
 			setCurrentDir(d2d)
 
+			// Trigger new status callback
+			cfg.OnNewStatus(lastFloor, currentDir, currentDst.floor, currentDst.dir)
 		case <-time.After(4 * time.Second):
 			cfg.OnNewStatus(lastFloor, currentDir, currentDst.floor, currentDst.dir)
 		}

@@ -20,17 +20,18 @@ func CostFunction(s globalstate.State, floor int, dir string) string {
 
 	// Extract lift with lowest cost
 	bestLift := ""
-	bestCost := 99
+	bestCost := 1000
 	for liftID, cost := range costs {
-		if cost < bestCost {
-			bestLift = liftID
-			bestCost = cost
-		}
+		bestLift = liftID
+		bestCost = cost
 	}
 
 	// Make sure no other buttons are assigned to this liftID
-	if bestLift != "" && hasOtherAssignments(s, bestLift) {
+	if hasOtherAssignments(s, bestLift) {
 		fmt.Printf("Best lift (%s) have other assignments already\n", bestLift)
+		return ""
+	} else if bestCost > 99 {
+		fmt.Printf("No satisfactory lifts. Best: %s with cost %d\n", bestLift, bestCost)
 		return ""
 	}
 
