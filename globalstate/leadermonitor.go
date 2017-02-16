@@ -15,8 +15,10 @@ import (
 )
 
 func (rw *raftwrapper) LeaderMonitor(updateBtnStatus func(bs ButtonStatusUpdate) error) {
+	// Set intervals. Timeout determined linearly based on number of floors.
 	scanInterval := 500 * time.Millisecond
-	orderTimeout := 7 * time.Second
+	orderTimeout := time.Duration(3*rw.config.Floors) * time.Second
+
 	leaderCh := rw.raft.LeaderCh()
 	isLeader := rw.raft.State() == raft.Leader
 
@@ -56,27 +58,30 @@ func (rw *raftwrapper) LeaderMonitor(updateBtnStatus func(bs ButtonStatusUpdate)
 		// Inspect unnassigned or orders that have timed out
 		unassignedBtns := getUnassignedOrders(state)
 		expiredBtns := getTimedOutOrders(state, orderTimeout)
+		var assignees []string
 
 		// Assign to elevators based on cost
 		for _, b := range expiredBtns {
 			lowestCostPeer := rw.config.CostFunction(state, b.Floor, b.Dir)
-			if lowestCostPeer == "" {
+			if lowestCostPeer == "" || stringInSlice(lowestCostPeer, assignees) {
 				rw.logger.Printf("[WARN] No lifts currently available to handle order: {Floor:%d, Dir:%s}\n", b.Floor, b.Dir)
 				continue
 			}
 			updateToAssigned(b, lowestCostPeer, updateBtnStatus)
-			time.Sleep(200 * time.Millisecond)
+			assignees = append(assignees, lowestCostPeer)
+			time.Sleep(100 * time.Millisecond)
 			sendCmd(b, lowestCostPeer)
 
 		}
 		for _, b := range unassignedBtns {
 			lowestCostPeer := rw.config.CostFunction(state, b.Floor, b.Dir)
-			if lowestCostPeer == "" {
+			if lowestCostPeer == "" || stringInSlice(lowestCostPeer, assignees) {
 				rw.logger.Printf("[WARN] No lifts currently available to handle order: {Floor:%d, Dir:%s}\n", b.Floor, b.Dir)
 				continue
 			}
 			updateToAssigned(b, lowestCostPeer, updateBtnStatus)
-			time.Sleep(200 * time.Millisecond)
+			assignees = append(assignees, lowestCostPeer)
+			time.Sleep(100 * time.Millisecond)
 			sendCmd(b, lowestCostPeer)
 		}
 	}
@@ -165,4 +170,13 @@ func updateToAssigned(b btn,
 	}
 	fmt.Printf("Sending assigned!\n")
 	return updateBtnStatus(bsu)
+}
+
+func stringInSlice(a string, list []string) bool {
+	for _, b := range list {
+		if b == a {
+			return true
+		}
+	}
+	return false
 }
