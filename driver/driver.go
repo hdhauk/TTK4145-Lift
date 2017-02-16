@@ -20,11 +20,11 @@ func GoToFloor(floor int, dir string) {
 	}
 }
 
-// StopAtNextFloor safely stop the elevator the next time it is in a floor and
-// open the door.
-// func StopAtNextFloor() {
-//
-// }
+// StopForPickup can be called if the elevator should stop in the next floor,
+// to pick someone up.
+func StopForPickup(f int, d string) {
+	stopForPickupCh <- dst{f, d}
+}
 
 // BtnLEDClear turns off the LED in the provided button.
 func BtnLEDClear(b Btn) {

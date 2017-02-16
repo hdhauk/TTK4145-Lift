@@ -1,7 +1,6 @@
 package statetools
 
 import (
-	"fmt"
 	"math"
 	"time"
 
@@ -28,10 +27,10 @@ func CostFunction(s globalstate.State, floor int, dir string) string {
 
 	// Make sure no other buttons are assigned to this liftID
 	if hasOtherAssignments(s, bestLift) {
-		fmt.Printf("Best lift (%s) have other assignments already\n", bestLift)
+		// fmt.Printf("Best lift (%s) have other assignments already\n", bestLift)
 		return ""
 	} else if bestCost > 99 {
-		fmt.Printf("No satisfactory lifts. Best: %s with cost %d\n", bestLift, bestCost)
+		// fmt.Printf("No satisfactory lifts. Best: %s with cost %d\n", bestLift, bestCost)
 		return ""
 	}
 
@@ -47,7 +46,7 @@ func calculateCost(
 	cost := 0
 
 	// Have the been alive recently?
-	if time.Since(lift.LastUpdate) > time.Second*6 {
+	if time.Since(lift.LastUpdate) > time.Second*10 {
 		return 100
 	}
 

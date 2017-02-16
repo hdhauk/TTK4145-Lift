@@ -64,7 +64,7 @@ func (rw *raftwrapper) LeaderMonitor(updateBtnStatus func(bs ButtonStatusUpdate)
 		for _, b := range expiredBtns {
 			lowestCostPeer := rw.config.CostFunction(state, b.Floor, b.Dir)
 			if lowestCostPeer == "" || stringInSlice(lowestCostPeer, assignees) {
-				rw.logger.Printf("[WARN] No lifts currently available to handle order: {Floor:%d, Dir:%s}\n", b.Floor, b.Dir)
+				// rw.logger.Printf("[WARN] No lifts currently available to handle order: {Floor:%d, Dir:%s}\n", b.Floor, b.Dir)
 				continue
 			}
 			updateToAssigned(b, lowestCostPeer, updateBtnStatus)
@@ -76,7 +76,7 @@ func (rw *raftwrapper) LeaderMonitor(updateBtnStatus func(bs ButtonStatusUpdate)
 		for _, b := range unassignedBtns {
 			lowestCostPeer := rw.config.CostFunction(state, b.Floor, b.Dir)
 			if lowestCostPeer == "" || stringInSlice(lowestCostPeer, assignees) {
-				rw.logger.Printf("[WARN] No lifts currently available to handle order: {Floor:%d, Dir:%s}\n", b.Floor, b.Dir)
+				// rw.logger.Printf("[WARN] No lifts currently available to handle order: {Floor:%d, Dir:%s}\n", b.Floor, b.Dir)
 				continue
 			}
 			updateToAssigned(b, lowestCostPeer, updateBtnStatus)
@@ -168,7 +168,6 @@ func updateToAssigned(b btn,
 		Status:     BtnStateAssigned,
 		AssignedTo: dstNode,
 	}
-	fmt.Printf("Sending assigned!\n")
 	return updateBtnStatus(bsu)
 }
 

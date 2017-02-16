@@ -15,6 +15,7 @@ type dst struct {
 // Package global channels
 var liftConnDoneCh chan bool
 var floorDstCh chan dst
+var stopForPickupCh chan dst
 var btnPressCh chan Btn
 var floorDetectCh chan int
 var apFloorCh chan int
@@ -42,10 +43,11 @@ func Init(c Config, done chan error) {
 
 	// Initialize channels
 	liftConnDoneCh = make(chan bool)
-	btnPressCh = make(chan Btn, 4)
-	floorDetectCh = make(chan int)
+	btnPressCh = make(chan Btn, c.Floors)
+	floorDetectCh = make(chan int, c.Floors)
+	stopForPickupCh = make(chan dst)
 	apFloorCh = make(chan int)
-	floorDstCh = make(chan dst)
+	floorDstCh = make(chan dst, c.Floors)
 
 	// Spawn workers
 	go btnScan(btnPressCh)
