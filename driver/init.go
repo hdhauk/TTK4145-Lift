@@ -32,13 +32,13 @@ func Init(c Config, done chan error) {
 
 	// Assign either hardware or simulator functions to driver handle
 	if c.SimMode == false {
-		driver.init = initHW
-		driver.setMotorDir = setMotorDirHW
-		driver.setBtnLED = setBtnLEDHW
-		driver.setFloorLED = setFloorLEDHW
-		driver.setDoorLED = setDoorLEDHW
-		driver.readOrderBtn = readOrderBtnHW
-		driver.readFloor = readFloorHW
+		driverHandle.init = initHW
+		driverHandle.setMotorDir = setMotorDirHW
+		driverHandle.setBtnLED = setBtnLEDHW
+		driverHandle.setFloorLED = setFloorLEDHW
+		driverHandle.setDoorLED = setDoorLEDHW
+		driverHandle.readOrderBtn = readOrderBtnHW
+		driverHandle.readFloor = readFloorHW
 	}
 
 	// Initialize channels
@@ -55,7 +55,7 @@ func Init(c Config, done chan error) {
 	go btnPressHandler(btnPressCh)
 	go floorDetectHandler(floorDetectCh, apFloorCh)
 	go autoPilot(apFloorCh, done)
-	go driver.init(cfg.SimPort)
+	go driverHandle.init(cfg.SimPort)
 
 	// Block until stack unwind
 	select {}
@@ -85,7 +85,7 @@ type Config struct {
 	Logger       *log.Logger
 }
 
-var driver = struct {
+var driverHandle = struct {
 	init         func(port string)
 	setMotorDir  func(dir string)
 	setBtnLED    func(btn Btn, active bool)
