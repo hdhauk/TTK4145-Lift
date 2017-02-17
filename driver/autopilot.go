@@ -1,6 +1,9 @@
 package driver
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 const (
 	red    = "\x1b[31;1m"
@@ -9,8 +12,6 @@ const (
 )
 
 func autoPilot(apFloorCh <-chan int, driverInitDone chan error) {
-	// lastFloor := 0
-	// dstFloor := 0
 	currentDir := stop
 	// Need function to get correct scoping in for-select loop
 	setCurrentDir := func(dir string) {
@@ -27,14 +28,18 @@ func autoPilot(apFloorCh <-chan int, driverInitDone chan error) {
 		lastFloor = f
 		currentDst = dst{floor: f, dir: ""}
 	case <-time.After(1 * time.Second):
-		driver.setMotorDir(up)
+		driverHandle.setMotorDir(up)
 		lastFloor = <-apFloorCh
-		driver.setMotorDir(stop)
+		driverHandle.setMotorDir(stop)
 		currentDir = stop
 		currentDst.floor = lastFloor
 	}
 	cfg.Logger.Printf("[INFO] Ready with elevator stationary in floor: %v\n", lastFloor)
 	close(driverInitDone)
+
+	// Pickup destination
+	var pickup dst
+	var setPickup = func(b dst) { pickup = b }
 
 	// Start autopilot service
 	for {
@@ -42,6 +47,7 @@ func autoPilot(apFloorCh <-chan int, driverInitDone chan error) {
 		select {
 		// Arrived at new floor
 		case f := <-apFloorCh:
+			fmt.Printf("Floor detected: %d\n", f)
 			lastFloor = f
 			/*
 				- Case 1: This is my destination
@@ -49,34 +55,37 @@ func autoPilot(apFloorCh <-chan int, driverInitDone chan error) {
 				- Case 2: This is NOT my destination
 						-> Make sure the target destination is floorDstChin the direction of travel
 						-> If everything is OK carry on
+				- Case 3: This is NOT my destination, BUT i can pick someone up here.
 			*/
 			// Case 1
 			if f == currentDst.floor {
+				fmt.Println("Start case 1")
 				setCurrentDir(stop)
-				cfg.OnNewStatus(lastFloor, currentDir, currentDst.floor, currentDst.dir)
-				driver.setMotorDir(stop)
-				cfg.OnDstReached(newBtn(currentDst.floor, currentDst.dir))
+				driverHandle.setMotorDir(stop)
+				go cfg.OnDstReached(newBtn(currentDst.floor, currentDst.dir))
 				currentDst.dir = ""
-				// Trigger newStatus callback, so it doesn't have to wait for the door to close
-				cfg.OnNewStatus(lastFloor, stop, currentDst.floor, currentDst.dir)
 				openDoor()
+				fmt.Println("End case 1")
+				go cfg.OnNewStatus(lastFloor, currentDir, currentDst.floor, currentDst.dir)
 				break selector
 			}
 
 			// Case 2
 			if dirToDst(f, currentDst.floor) != currentDir {
+				fmt.Println("Start case 2")
 				newDir := dirToDst(lastFloor, currentDst.floor)
 				setCurrentDir(newDir)
 				cfg.Logger.Printf(yellow+"[WARN] Unexpected direction value. Correcting to: %s"+white, newDir)
-				driver.setMotorDir(newDir)
-				cfg.OnNewStatus(f, currentDir, currentDst.floor, currentDst.dir)
+				driverHandle.setMotorDir(newDir)
+				fmt.Println("End case 2")
 			}
 
 			// Trigger new status callback
-			cfg.OnNewStatus(lastFloor, currentDir, currentDst.floor, currentDst.dir)
+			go cfg.OnNewStatus(lastFloor, currentDir, currentDst.floor, currentDst.dir)
 
-			// New destination given
+		// New destination given
 		case d := <-floorDstCh:
+			fmt.Println(d)
 			currentDst = d
 			/*
 				- Case 1: My new destination is coincidentaly the elevator currenly is parked
@@ -90,7 +99,7 @@ func autoPilot(apFloorCh <-chan int, driverInitDone chan error) {
 				switch currentDir {
 				// Case 1
 				case stop:
-					cfg.OnDstReached(newBtn(currentDst.floor, currentDst.dir))
+					go cfg.OnDstReached(newBtn(currentDst.floor, currentDst.dir))
 					currentDst.dir = ""
 					openDoor()
 					break selector
@@ -101,7 +110,7 @@ func autoPilot(apFloorCh <-chan int, driverInitDone chan error) {
 					// and in rare cases will end up going beyond the area of operation.
 					time.Sleep(200 * time.Millisecond)
 
-					driver.setMotorDir(down)
+					driverHandle.setMotorDir(down)
 					setCurrentDir(down)
 					break selector
 				// Case 2b
@@ -111,7 +120,7 @@ func autoPilot(apFloorCh <-chan int, driverInitDone chan error) {
 					// and in rare cases will end up going beyond the area of operation.
 					time.Sleep(200 * time.Millisecond)
 
-					driver.setMotorDir(up)
+					driverHandle.setMotorDir(up)
 					setCurrentDir(up)
 					break selector
 				}
@@ -119,13 +128,35 @@ func autoPilot(apFloorCh <-chan int, driverInitDone chan error) {
 
 			// Case 3
 			d2d := dirToDst(lastFloor, d.floor)
-			driver.setMotorDir(d2d)
+			driverHandle.setMotorDir(d2d)
 			setCurrentDir(d2d)
 
 			// Trigger new status callback
-			cfg.OnNewStatus(lastFloor, currentDir, currentDst.floor, currentDst.dir)
+			go cfg.OnNewStatus(lastFloor, currentDir, currentDst.floor, currentDst.dir)
+
+		// Periodically send status updates
 		case <-time.After(4 * time.Second):
-			cfg.OnNewStatus(lastFloor, currentDir, currentDst.floor, currentDst.dir)
+			go cfg.OnNewStatus(lastFloor, currentDir, currentDst.floor, currentDst.dir)
+
+		// Pickup requests
+		case p := <-stopForPickupCh:
+			// Make sure it is safe to stop and that the lift acutally is in this floor.
+			atFloor, f := driverHandle.readFloor()
+			if !atFloor {
+				cfg.Logger.Println(yellow + "[WARN] Cannot stop for pickup outside a floor. Pickup aborted." + white)
+				break selector
+			} else if f != p.floor {
+				cfg.Logger.Printf("%s[WARN] Pickup floor and current floor do not match (%d != %d). Pickup aborted.%s\n", yellow, f, p.floor, white)
+				break selector
+			}
+
+			// Do the pickup, and carry on.
+			setPickup(p)
+			driverHandle.setMotorDir(stop)
+			go cfg.OnDstReached(newBtn(pickup.floor, pickup.dir))
+			go cfg.OnNewStatus(lastFloor, stop, currentDst.floor, currentDst.dir)
+			openDoor()
+			driverHandle.setMotorDir(currentDir)
 		}
 	}
 }
@@ -141,9 +172,9 @@ func dirToDst(lastFloor, dst int) string {
 }
 
 func openDoor() {
-	driver.setDoorLED(true)
+	driverHandle.setDoorLED(true)
 	time.Sleep(3 * time.Second)
-	driver.setDoorLED(false)
+	driverHandle.setDoorLED(false)
 }
 
 func newBtn(f int, dir string) Btn {

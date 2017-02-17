@@ -15,6 +15,7 @@ type dst struct {
 // Package global channels
 var liftConnDoneCh chan bool
 var floorDstCh chan dst
+var stopForPickupCh chan dst
 var btnPressCh chan Btn
 var floorDetectCh chan int
 var apFloorCh chan int
@@ -31,21 +32,22 @@ func Init(c Config, done chan error) {
 
 	// Assign either hardware or simulator functions to driver handle
 	if c.SimMode == false {
-		driver.init = initHW
-		driver.setMotorDir = setMotorDirHW
-		driver.setBtnLED = setBtnLEDHW
-		driver.setFloorLED = setFloorLEDHW
-		driver.setDoorLED = setDoorLEDHW
-		driver.readOrderBtn = readOrderBtnHW
-		driver.readFloor = readFloorHW
+		driverHandle.init = initHW
+		driverHandle.setMotorDir = setMotorDirHW
+		driverHandle.setBtnLED = setBtnLEDHW
+		driverHandle.setFloorLED = setFloorLEDHW
+		driverHandle.setDoorLED = setDoorLEDHW
+		driverHandle.readOrderBtn = readOrderBtnHW
+		driverHandle.readFloor = readFloorHW
 	}
 
 	// Initialize channels
 	liftConnDoneCh = make(chan bool)
-	btnPressCh = make(chan Btn, 4)
-	floorDetectCh = make(chan int)
+	btnPressCh = make(chan Btn, c.Floors)
+	floorDetectCh = make(chan int, c.Floors)
+	stopForPickupCh = make(chan dst)
 	apFloorCh = make(chan int)
-	floorDstCh = make(chan dst)
+	floorDstCh = make(chan dst, c.Floors)
 
 	// Spawn workers
 	go btnScan(btnPressCh)
@@ -53,7 +55,7 @@ func Init(c Config, done chan error) {
 	go btnPressHandler(btnPressCh)
 	go floorDetectHandler(floorDetectCh, apFloorCh)
 	go autoPilot(apFloorCh, done)
-	go driver.init(cfg.SimPort)
+	go driverHandle.init(cfg.SimPort)
 
 	// Block until stack unwind
 	select {}
@@ -83,7 +85,7 @@ type Config struct {
 	Logger       *log.Logger
 }
 
-var driver = struct {
+var driverHandle = struct {
 	init         func(port string)
 	setMotorDir  func(dir string)
 	setBtnLED    func(btn Btn, active bool)

@@ -6,6 +6,7 @@ import (
 	"bitbucket.org/halvor_haukvik/ttk4145-elevator/driver"
 	"bitbucket.org/halvor_haukvik/ttk4145-elevator/globalstate"
 	"bitbucket.org/halvor_haukvik/ttk4145-elevator/peerdiscovery"
+	"bitbucket.org/halvor_haukvik/ttk4145-elevator/statetools"
 )
 
 // Globalstate callbacks
@@ -36,6 +37,14 @@ func onBtnPress(b driver.Btn) {
 }
 
 func onNewStatus(f int, dir string, dstFloor int, dstDir string) {
+	// Check if there are anyone to pick up.
+	state, _ := gs.GetState()
+	if statetools.ShouldStopAndPickup(state, f, dir) {
+		driver.StopForPickup(f, dir)
+		fmt.Printf("Pickup was available in Floor=%d Dir=%s. Stopping!\n", f, dir)
+	}
+
+	// Send status update
 	lsu := globalstate.LiftStatusUpdate{
 		CurrentFloor: uint(f),
 		CurrentDir:   dir,

@@ -20,11 +20,11 @@ func GoToFloor(floor int, dir string) {
 	}
 }
 
-// StopAtNextFloor safely stop the elevator the next time it is in a floor and
-// open the door.
-// func StopAtNextFloor() {
-//
-// }
+// StopForPickup can be called if the elevator should stop in the next floor,
+// to pick someone up.
+func StopForPickup(f int, d string) {
+	stopForPickupCh <- dst{f, d}
+}
 
 // BtnLEDClear turns off the LED in the provided button.
 func BtnLEDClear(b Btn) {
@@ -33,7 +33,7 @@ func BtnLEDClear(b Btn) {
 		return
 	}
 	// TODO: Check for race conditions
-	driver.setBtnLED(b, false)
+	driverHandle.setBtnLED(b, false)
 }
 
 // BtnLEDSet turns on the LED in the provided button.
@@ -42,7 +42,7 @@ func BtnLEDSet(b Btn) {
 		cfg.Logger.Printf("%s[ERROR] Invalid button: %s%s", yellow, err.Error(), white)
 		return
 	}
-	driver.setBtnLED(b, true)
+	driverHandle.setBtnLED(b, true)
 }
 
 // BtnType defines the 3 types of buttons that are in use. In order to use the
