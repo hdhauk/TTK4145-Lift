@@ -51,14 +51,17 @@ func main() {
 
 	// Initialize driver
 	cfg := driver.Config{
-		SimMode:      true,
-		SimPort:      simPort,
 		Floors:       9,
 		OnBtnPress:   onBtnPress,
 		OnNewStatus:  onNewStatus,
 		OnDstReached: onDstReached,
 		Logger:       log.New(os.Stderr, "[driver] ", log.Ltime|log.Lshortfile),
 	}
+	if simPort != "" {
+		cfg.SimMode = true
+		cfg.SimPort = simPort
+	}
+
 	driverInitDone := make(chan error)
 	go driver.Init(cfg, driverInitDone)
 	err := <-driverInitDone
