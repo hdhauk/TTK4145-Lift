@@ -59,7 +59,7 @@ func autoPilot(apFloorCh <-chan int, driverInitDone chan error) {
 			if f == currentDst.floor {
 				setCurrentDir(stop)
 				driverHandle.setMotorDir(stop)
-				go cfg.OnDstReached(newBtn(currentDst.floor, currentDst.dir))
+				go cfg.OnDstReached(newBtn(currentDst.floor, currentDst.dir), false)
 				currentDst.dir = ""
 				openDoor()
 				go cfg.OnNewStatus(lastFloor, currentDir, currentDst.floor, currentDst.dir)
@@ -92,7 +92,7 @@ func autoPilot(apFloorCh <-chan int, driverInitDone chan error) {
 				switch currentDir {
 				// Case 1
 				case stop:
-					go cfg.OnDstReached(newBtn(currentDst.floor, currentDst.dir))
+					go cfg.OnDstReached(newBtn(currentDst.floor, currentDst.dir), false)
 					currentDst.dir = ""
 					openDoor()
 					break selector
@@ -146,7 +146,7 @@ func autoPilot(apFloorCh <-chan int, driverInitDone chan error) {
 			// Do the pickup, and carry on.
 			setPickup(p)
 			driverHandle.setMotorDir(stop)
-			go cfg.OnDstReached(newBtn(pickup.floor, pickup.dir))
+			go cfg.OnDstReached(newBtn(pickup.floor, pickup.dir), true)
 			go cfg.OnNewStatus(lastFloor, stop, currentDst.floor, currentDst.dir)
 			openDoor()
 			driverHandle.setMotorDir(currentDir)
@@ -177,4 +177,17 @@ func newBtn(f int, dir string) Btn {
 		return Btn{Floor: f, Type: HallUp}
 	}
 	return Btn{}
+}
+
+func clearAllBtns() {
+	for i := 0; i < cfg.Floors-1; i++ {
+		b := Btn{i, HallUp}
+		driverHandle.setBtnLED(b, false)
+	}
+	for i := 1; i < cfg.Floors; i++ {
+		driverHandle.setBtnLED(Btn{i, HallDown}, false)
+	}
+	for i := 1; i < cfg.Floors; i++ {
+		driverHandle.setBtnLED(Btn{i, Cab}, false)
+	}
 }

@@ -70,7 +70,7 @@ var cfg = Config{
 	OnBtnPress: func(b Btn) {
 		fmt.Printf("onBtnPress callback not set! Type: %v, Floor: %v\n", b.Type, b.Floor)
 	},
-	OnDstReached: func(b Btn) { fmt.Printf("OnDstReached callback not set! Floor: %v\n", b.Floor) },
+	OnDstReached: func(b Btn, p bool) { fmt.Printf("OnDstReached callback not set! Floor: %v\n", b.Floor) },
 	Logger:       log.New(os.Stdout, "driver-default-debugger:", log.Lshortfile|log.Ltime),
 }
 
@@ -80,7 +80,7 @@ type Config struct {
 	SimPort      string
 	Floors       int
 	OnNewStatus  func(floor int, dir string, dstFloor int, dstDir string)
-	OnDstReached func(b Btn)
+	OnDstReached func(b Btn, pickup bool)
 	OnBtnPress   func(b Btn)
 	Logger       *log.Logger
 }

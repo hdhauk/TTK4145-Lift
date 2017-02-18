@@ -152,7 +152,6 @@ func (f *FSM) GetState() (State, error) {
 func (rw *raftwrapper) leaderComEndpoint() (string, error) {
 	leaderRaftAddr := rw.GetLeader()
 	if leaderRaftAddr == "" {
-		rw.logger.Printf("[ERROR] Cannot send button status. No current leader.")
 		return "", fmt.Errorf("Cannot send button status. No current leader")
 	}
 	parts := strings.Split(leaderRaftAddr, ":")

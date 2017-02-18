@@ -13,12 +13,28 @@ import (
 // =============================================================================
 func onIncomingCommand(f int, dir string) {
 	// TODO: Doublecheck if the lift isn't currently busy
-	driver.GoToFloor(f, dir)
+	switch dir {
+	case "up":
+		goToCh <- driver.Btn{Floor: f, Type: driver.HallUp}
+	case "down":
+		goToCh <- driver.Btn{Floor: f, Type: driver.HallDown}
+	}
 }
 
 func onPromotion() {}
 
 func onDemotion() {}
+
+func onAquiredConsensus() {
+	mainlogger.Println("Aquired consensus")
+	haveConsensusBtnSyncCh <- true
+	haveConsensusAssignerCh <- true
+}
+func onLostConsensus() {
+	mainlogger.Println("Lost consensus")
+	haveConsensusBtnSyncCh <- false
+	haveConsensusAssignerCh <- false
+}
 
 // Driver callbacks
 // =============================================================================
@@ -30,8 +46,11 @@ func onBtnPress(b driver.Btn) {
 	}
 	err := gs.UpdateButtonStatus(bsu)
 	if err != nil {
-		fmt.Println("Failed to send button update...")
-		// TODO: Add to local store
+		mainlogger.Printf("[INFO] Unable to send button update to network. Storing locally.\n")
+		if err := ls.UpdateButtonStatus(bsu); err != nil {
+			mainlogger.Printf("[ERROR] Unable to handle button press: %v", err.Error())
+			return
+		}
 	}
 	driver.BtnLEDSet(b)
 }
@@ -52,25 +71,28 @@ func onNewStatus(f int, dir string, dstFloor int, dstDir string) {
 		DstBtnDir:    dstDir,
 	}
 	if err := gs.UpdateLiftStatus(lsu); err != nil {
-		fmt.Println("Failed to send liftupdate...")
+		// fmt.Println("Failed to send liftupdate...")
 	}
-	// Check lift reached a foor and if it can pick someone up there
-	// TODO
-	// --> GetState
-	// --> statetools.ShouldStopAndPickup(state, f, dir)
 
 }
 
-func onDstReached(b driver.Btn) {
+func onDstReached(b driver.Btn, pickup bool) {
 	bsu := globalstate.ButtonStatusUpdate{
 		Floor:  uint(b.Floor),
 		Dir:    b.Type.String(),
 		Status: globalstate.BtnStateDone,
 	}
 	if err := gs.UpdateButtonStatus(bsu); err != nil {
-		fmt.Println("Failed to send DONE status")
+		if err := ls.UpdateButtonStatus(bsu); err != nil {
+			mainlogger.Printf("[ERROR] Unable to handle button press: %v", err.Error())
+			return
+		}
 	}
 	driver.BtnLEDClear(b)
+	if !pickup {
+		fmt.Println("done with order")
+		orderDoneCh <- struct{}{}
+	}
 }
 
 // Peer discovery callbacks
