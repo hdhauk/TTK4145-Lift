@@ -51,9 +51,9 @@ func main() {
 
 	// Initialize driver
 	cfg := driver.Config{
-		SimMode:      true,
-		SimPort:      simPort,
-		Floors:       9,
+		SimMode: false,
+		//SimPort: simPort,
+		Floors:       4,
 		OnBtnPress:   onBtnPress,
 		OnNewStatus:  onNewStatus,
 		OnDstReached: onDstReached,
@@ -66,13 +66,12 @@ func main() {
 		mainlogger.Fatalf("[ERROR] Failed to initalize driver: %v", err)
 	}
 	mainlogger.Println("[INFO] Driver successfully initialized")
-
 	// Initalize globalstate
 	ip, _ := peerdiscovery.GetLocalIP()
 	globalstateConfig := globalstate.Config{
 		RaftPort: raftPort,
 		OwnIP:    ip,
-		Floors:   9,
+		Floors:   4,
 		// OnPromotion:        func() { fmt.Println("PROMOTED!:)") },
 		// OnDemotion:         func() { fmt.Println("DEMOTED, :(") },
 		OnAquiredConsensus: func() { fmt.Println("Aquired RAFT-consensus") },

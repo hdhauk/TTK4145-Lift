@@ -7,6 +7,7 @@ func initHW(port string) {
 	if ioInit() != nil {
 		cfg.Logger.Fatalln("Failed to connect to the elvator. Make sure everything is turned on and try again!")
 	}
+	clearAllBtns()
 	close(liftConnDoneCh)
 	cfg.Logger.Println("hardware initalization complete")
 }
@@ -98,4 +99,17 @@ func getObstructionSignal() bool {
 
 func getStopSignal() bool {
 	return ioReadBit(stopBtn)
+}
+
+func clearAllBtns() {
+	for i := 0; i < cfg.Floors-1; i++ {
+		b := Btn{i, HallUp}
+		driverHandle.setBtnLED(b, false)
+	}
+	for i := 1; i < cfg.Floors; i++ {
+		driverHandle.setBtnLED(Btn{i, HallDown}, false)
+	}
+	for i := 1; i < cfg.Floors; i++ {
+		driverHandle.setBtnLED(Btn{i, Cab}, false)
+	}
 }
