@@ -1,9 +1,6 @@
 package driver
 
-import (
-	"fmt"
-	"time"
-)
+import "time"
 
 const (
 	red    = "\x1b[31;1m"
@@ -19,6 +16,8 @@ func autoPilot(apFloorCh <-chan int, driverInitDone chan error) {
 	}
 
 	<-liftConnDoneCh
+	clearAllBtns()
+	driverHandle.setDoorLED(false)
 
 	// Drive up to a well defined floor
 	var lastFloor int
@@ -47,7 +46,6 @@ func autoPilot(apFloorCh <-chan int, driverInitDone chan error) {
 		select {
 		// Arrived at new floor
 		case f := <-apFloorCh:
-			fmt.Printf("Floor detected: %d\n", f)
 			lastFloor = f
 			/*
 				- Case 1: This is my destination
@@ -59,25 +57,22 @@ func autoPilot(apFloorCh <-chan int, driverInitDone chan error) {
 			*/
 			// Case 1
 			if f == currentDst.floor {
-				fmt.Println("Start case 1")
 				setCurrentDir(stop)
 				driverHandle.setMotorDir(stop)
-				go cfg.OnDstReached(newBtn(currentDst.floor, currentDst.dir))
+				go cfg.OnDstReached(newBtn(currentDst.floor, currentDst.dir), false)
 				currentDst.dir = ""
 				openDoor()
-				fmt.Println("End case 1")
+				driverHandle.setBtnLED(Btn{lastFloor, Cab}, false)
 				go cfg.OnNewStatus(lastFloor, currentDir, currentDst.floor, currentDst.dir)
 				break selector
 			}
 
 			// Case 2
 			if dirToDst(f, currentDst.floor) != currentDir {
-				fmt.Println("Start case 2")
 				newDir := dirToDst(lastFloor, currentDst.floor)
 				setCurrentDir(newDir)
 				cfg.Logger.Printf(yellow+"[WARN] Unexpected direction value. Correcting to: %s"+white, newDir)
 				driverHandle.setMotorDir(newDir)
-				fmt.Println("End case 2")
 			}
 
 			// Trigger new status callback
@@ -85,7 +80,6 @@ func autoPilot(apFloorCh <-chan int, driverInitDone chan error) {
 
 		// New destination given
 		case d := <-floorDstCh:
-			fmt.Println(d)
 			currentDst = d
 			/*
 				- Case 1: My new destination is coincidentaly the elevator currenly is parked
@@ -99,8 +93,9 @@ func autoPilot(apFloorCh <-chan int, driverInitDone chan error) {
 				switch currentDir {
 				// Case 1
 				case stop:
-					go cfg.OnDstReached(newBtn(currentDst.floor, currentDst.dir))
+					go cfg.OnDstReached(newBtn(currentDst.floor, currentDst.dir), false)
 					currentDst.dir = ""
+					driverHandle.setBtnLED(Btn{lastFloor, Cab}, false)
 					openDoor()
 					break selector
 				// Case 2a
@@ -153,8 +148,9 @@ func autoPilot(apFloorCh <-chan int, driverInitDone chan error) {
 			// Do the pickup, and carry on.
 			setPickup(p)
 			driverHandle.setMotorDir(stop)
-			go cfg.OnDstReached(newBtn(pickup.floor, pickup.dir))
+			go cfg.OnDstReached(newBtn(pickup.floor, pickup.dir), true)
 			go cfg.OnNewStatus(lastFloor, stop, currentDst.floor, currentDst.dir)
+			driverHandle.setBtnLED(Btn{f, Cab}, false)
 			openDoor()
 			driverHandle.setMotorDir(currentDir)
 		}
@@ -184,4 +180,17 @@ func newBtn(f int, dir string) Btn {
 		return Btn{Floor: f, Type: HallUp}
 	}
 	return Btn{}
+}
+
+func clearAllBtns() {
+	for i := 0; i < cfg.Floors-1; i++ {
+		b := Btn{i, HallUp}
+		driverHandle.setBtnLED(b, false)
+	}
+	for i := 1; i < cfg.Floors; i++ {
+		driverHandle.setBtnLED(Btn{i, HallDown}, false)
+	}
+	for i := 0; i < cfg.Floors; i++ {
+		driverHandle.setBtnLED(Btn{i, Cab}, false)
+	}
 }

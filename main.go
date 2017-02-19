@@ -23,10 +23,17 @@ var simPort string
 var r = 1024 + rand.Intn(64510)
 var raftPort = r
 
+// Global state is threadsafe and for simplicity available to the whole main package.
 var gs globalstate.FSM
+var ls *statetools.LocalState
+var mainlogger = log.New(os.Stderr, "[main] ", log.Ltime|log.Lshortfile)
+var goToCh = make(chan driver.Btn, 9)
+var goToFromInsideCh = make(chan driver.Btn, 9)
+var orderDoneCh = make(chan interface{})
+var haveConsensusBtnSyncCh = make(chan bool)
+var haveConsensusAssignerCh = make(chan bool)
 
 func main() {
-	mainlogger := log.New(os.Stderr, "[main] ", log.Ltime|log.Lshortfile)
 	// Parse arg flags
 	flag.StringVar(&nick, "nick", strconv.Itoa(os.Getpid()), "Nickname of this peer. Default is the process id (PID)")
 	flag.StringVar(&simPort, "sim", "", "Listening port of the simulator")
@@ -50,32 +57,34 @@ func main() {
 	time.Sleep(2 * discoveryConfig.BroadcastInterval)
 
 	// Initialize driver
-	cfg := driver.Config{
-		SimMode: false,
-		//SimPort: simPort,
-		Floors:       4,
+	driverConfig := driver.Config{
+		Floors:       9,
 		OnBtnPress:   onBtnPress,
 		OnNewStatus:  onNewStatus,
 		OnDstReached: onDstReached,
 		Logger:       log.New(os.Stderr, "[driver] ", log.Ltime|log.Lshortfile),
 	}
+	if simPort != "" {
+		driverConfig.SimMode = true
+		driverConfig.SimPort = simPort
+	}
+
 	driverInitDone := make(chan error)
-	go driver.Init(cfg, driverInitDone)
+	go driver.Init(driverConfig, driverInitDone)
 	err := <-driverInitDone
 	if err != nil {
 		mainlogger.Fatalf("[ERROR] Failed to initalize driver: %v", err)
 	}
 	mainlogger.Println("[INFO] Driver successfully initialized")
+
 	// Initalize globalstate
 	ip, _ := peerdiscovery.GetLocalIP()
 	globalstateConfig := globalstate.Config{
-		RaftPort: raftPort,
-		OwnIP:    ip,
-		Floors:   4,
-		// OnPromotion:        func() { fmt.Println("PROMOTED!:)") },
-		// OnDemotion:         func() { fmt.Println("DEMOTED, :(") },
-		OnAquiredConsensus: func() { fmt.Println("Aquired RAFT-consensus") },
-		OnLostConsensus:    func() { fmt.Println("Lost RAFT-consensus") },
+		RaftPort:           raftPort,
+		OwnIP:              ip,
+		Floors:             9,
+		OnAquiredConsensus: onAquiredConsensus,
+		OnLostConsensus:    onLostConsensus,
 		OnIncomingCommand:  onIncomingCommand,
 		CostFunction:       statetools.CostFunction,
 		Logger:             log.New(os.Stderr, "[globalstate] ", log.Ltime|log.Lshortfile),
@@ -95,15 +104,31 @@ func main() {
 		mainlogger.Printf("[ERROR] Failed to initalize globalstore: %s", err.Error())
 	}
 
+	// Set up local state in case network connection is lost.
+	ls = statetools.NewLocalState()
+
 	// Start syncinc button leds with the global state.
 	go syncBtnLEDs(gs)
+	go liftDriver()
+	go noConsensusAssigner()
 
 	// Block forever
 	select {}
 }
 
 func syncBtnLEDs(globalstate globalstate.FSM) {
+	online := false
 	for {
+		select {
+		case b := <-haveConsensusBtnSyncCh:
+			online = b
+		case <-time.After(1 * time.Microsecond):
+
+		}
+		if !online {
+			continue
+		}
+
 		time.Sleep(500 * time.Millisecond)
 		s, err := globalstate.GetState()
 		if err != nil {
@@ -128,4 +153,91 @@ func syncBtnLEDs(globalstate globalstate.FSM) {
 		}
 
 	}
+}
+
+func liftDriver() {
+	outsideQueue := btnQueue{}
+	insideQueue := btnQueue{}
+	ready := true
+	insideTimeout := time.Now()
+
+	for {
+		select {
+		case dst := <-goToCh:
+			outsideQueue.Queue(dst)
+			mainlogger.Println("Added to outside queue")
+		case dst := <-goToFromInsideCh:
+			mainlogger.Println("Added to inside queue")
+			insideQueue.Queue(dst)
+		case <-orderDoneCh:
+			mainlogger.Println("liftDriver ready!")
+			ready = true
+			insideTimeout = time.Now()
+		case <-time.After(100 * time.Millisecond):
+		}
+
+		if !insideQueue.IsEmpty() && ready {
+			dst := insideQueue.Dequeue()
+			mainlogger.Println("Took order from inside")
+			driver.GoToFloor(dst.Floor, "")
+			ready = false
+		} else if ready &&
+			!outsideQueue.IsEmpty() &&
+			time.Since(insideTimeout) > 3*time.Second {
+
+			mainlogger.Println("Took order from outside")
+			dst := outsideQueue.Dequeue()
+			driver.GoToFloor(dst.Floor, dst.Type.String())
+			ready = false
+		}
+	}
+}
+
+func noConsensusAssigner() {
+	online := true
+	for {
+
+		select {
+		case b := <-haveConsensusAssignerCh:
+			online = b
+		case <-time.After(1 * time.Second):
+		}
+		if online {
+			continue
+		}
+
+		floor, dir := ls.GetNextOrder()
+		bsu := globalstate.ButtonStatusUpdate{
+			Floor:  uint(floor),
+			Dir:    dir,
+			Status: globalstate.BtnStateAssigned,
+		}
+		if dir == "up" {
+			fmt.Println("up")
+			goToCh <- driver.Btn{Floor: floor, Type: driver.HallUp}
+			ls.UpdateButtonStatus(bsu)
+		} else if dir == "down" {
+			fmt.Println("down")
+			goToCh <- driver.Btn{Floor: floor, Type: driver.HallDown}
+			ls.UpdateButtonStatus(bsu)
+		}
+
+	}
+}
+
+type btnQueue struct {
+	btns []driver.Btn
+}
+
+func (bq *btnQueue) Queue(b driver.Btn) {
+	bq.btns = append(bq.btns, b)
+}
+func (bq *btnQueue) Dequeue() (b driver.Btn) {
+	b = bq.btns[0]
+	bq.btns = bq.btns[1:]
+	return
+}
+
+func (bq *btnQueue) IsEmpty() bool {
+	return len(bq.btns) == 0
 }

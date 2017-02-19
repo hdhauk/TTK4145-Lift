@@ -21,8 +21,10 @@ func CostFunction(s globalstate.State, floor int, dir string) string {
 	bestLift := ""
 	bestCost := 1000
 	for liftID, cost := range costs {
-		bestLift = liftID
-		bestCost = cost
+		if cost < bestCost {
+			bestCost = cost
+			bestLift = liftID
+		}
 	}
 
 	// Make sure no other buttons are assigned to this liftID

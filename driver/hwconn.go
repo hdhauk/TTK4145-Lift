@@ -100,16 +100,3 @@ func getObstructionSignal() bool {
 func getStopSignal() bool {
 	return ioReadBit(stopBtn)
 }
-
-func clearAllBtns() {
-	for i := 0; i < cfg.Floors-1; i++ {
-		b := Btn{i, HallUp}
-		driverHandle.setBtnLED(b, false)
-	}
-	for i := 1; i < cfg.Floors; i++ {
-		driverHandle.setBtnLED(Btn{i, HallDown}, false)
-	}
-	for i := 1; i < cfg.Floors; i++ {
-		driverHandle.setBtnLED(Btn{i, Cab}, false)
-	}
-}

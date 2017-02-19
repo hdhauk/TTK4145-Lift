@@ -16,6 +16,7 @@ do
   Rebuild and restart controllers                          (4)
   Emulate packet loss on network adapter                   (5)
   Remove emulated packet loss                              (6)
+  Spawn 4x terminals for the simulators                    (7)
   Quit                                                     (Q)
 --------------------------------------------------------------
 Choose and option:
@@ -117,6 +118,15 @@ EOF
     "6")
         sudo tc qdisc del dev $adapter root netem loss $percentage%
         echo "Emulated packet loss reset"
+        ;;
+    "7")
+        echo "Launching 4 simulators"
+        gnome-terminal --geometry 135x10+680+100
+        gnome-terminal --geometry 135x10+680+320
+        gnome-terminal --geometry 135x10+680+540
+        gnome-terminal --geometry 135x10+680+760
+        # Return to main
+        xdotool windowactivate --sync $MAIN
         ;;
     "Q")
         sleep .2
