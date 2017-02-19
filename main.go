@@ -159,20 +159,34 @@ func liftDriver() {
 	outsideQueue := btnQueue{}
 	insideQueue := btnQueue{}
 	ready := true
+	insideTimeout := time.Now()
 
 	for {
 		select {
 		case dst := <-goToCh:
 			outsideQueue.Queue(dst)
+			mainlogger.Println("Added to outside queue")
 		case dst := <-goToFromInsideCh:
+			mainlogger.Println("Added to inside queue")
 			insideQueue.Queue(dst)
 		case <-orderDoneCh:
+			mainlogger.Println("liftDriver ready!")
 			ready = true
+			insideTimeout = time.Now()
+		case <-time.After(100 * time.Millisecond):
 		}
-		if dst, empty := insideQueue.Dequeue(); !empty && ready {
+
+		if !insideQueue.IsEmpty() && ready {
+			dst := insideQueue.Dequeue()
+			mainlogger.Println("Took order from inside")
 			driver.GoToFloor(dst.Floor, "")
 			ready = false
-		} else if dst, empty := outsideQueue.Dequeue(); !empty && ready {
+		} else if ready &&
+			!outsideQueue.IsEmpty() &&
+			time.Since(insideTimeout) > 3*time.Second {
+
+			mainlogger.Println("Took order from outside")
+			dst := outsideQueue.Dequeue()
 			driver.GoToFloor(dst.Floor, dst.Type.String())
 			ready = false
 		}
@@ -186,17 +200,26 @@ func noConsensusAssigner() {
 		select {
 		case b := <-haveConsensusAssignerCh:
 			online = b
-		case <-time.After(1 * time.Millisecond):
+		case <-time.After(1 * time.Second):
 		}
 		if online {
 			continue
 		}
 
 		floor, dir := ls.GetNextOrder()
+		bsu := globalstate.ButtonStatusUpdate{
+			Floor:  uint(floor),
+			Dir:    dir,
+			Status: globalstate.BtnStateAssigned,
+		}
 		if dir == "up" {
+			fmt.Println("up")
 			goToCh <- driver.Btn{Floor: floor, Type: driver.HallUp}
+			ls.UpdateButtonStatus(bsu)
 		} else if dir == "down" {
+			fmt.Println("down")
 			goToCh <- driver.Btn{Floor: floor, Type: driver.HallDown}
+			ls.UpdateButtonStatus(bsu)
 		}
 
 	}
@@ -209,11 +232,12 @@ type btnQueue struct {
 func (bq *btnQueue) Queue(b driver.Btn) {
 	bq.btns = append(bq.btns, b)
 }
-func (bq *btnQueue) Dequeue() (b driver.Btn, empty bool) {
-	if len(bq.btns) == 0 {
-		return driver.Btn{}, true
-	}
+func (bq *btnQueue) Dequeue() (b driver.Btn) {
 	b = bq.btns[0]
 	bq.btns = bq.btns[1:]
 	return
+}
+
+func (bq *btnQueue) IsEmpty() bool {
+	return len(bq.btns) == 0
 }

@@ -1,7 +1,6 @@
 package statetools
 
 import (
-	"fmt"
 	"math"
 	"time"
 
@@ -17,7 +16,6 @@ func CostFunction(s globalstate.State, floor int, dir string) string {
 	for _, lift := range lifts {
 		costs[lift.ID] = calculateCost(lift, uint(floor), dir, s)
 	}
-	fmt.Println(costs)
 
 	// Extract lift with lowest cost
 	bestLift := ""

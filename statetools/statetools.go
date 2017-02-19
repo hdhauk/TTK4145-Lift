@@ -63,18 +63,51 @@ func (ls *LocalState) GetNextOrder() (floor int, dir string) {
 	floor = -1
 	dir = ""
 	for k, v := range ls.state.HallUpButtons {
-		if v.LastStatus != done && v.LastChange.Before(oldest) {
+		if v.LastStatus == globalstate.BtnStateUnassigned && v.LastChange.Before(oldest) {
 			oldest = v.LastChange
 			floor, _ = strconv.Atoi(k)
 			dir = up
 		}
 	}
 	for k, v := range ls.state.HallDownButtons {
-		if v.LastStatus != done && v.LastChange.Before(oldest) {
+		if v.LastStatus == globalstate.BtnStateUnassigned && v.LastChange.Before(oldest) {
 			oldest = v.LastChange
 			floor, _ = strconv.Atoi(k)
 			dir = down
 		}
 	}
 	return
+}
+
+// GetAllShareworthyUpdates dumps all orders in the local state that aren't currently marked
+// as done. For conencience they are retuned as an array of button status updates.
+func (ls *LocalState) GetAllShareworthyUpdates() []globalstate.ButtonStatusUpdate {
+	ls.mu.Lock()
+	defer ls.mu.Unlock()
+
+	var ret = []globalstate.ButtonStatusUpdate{}
+
+	for k, v := range ls.state.HallUpButtons {
+		if v.LastStatus != globalstate.BtnStateDone {
+			floor, _ := strconv.Atoi(k)
+			bsu := globalstate.ButtonStatusUpdate{
+				Floor:  uint(floor),
+				Dir:    up,
+				Status: globalstate.BtnStateUnassigned,
+			}
+			ret = append(ret, bsu)
+		}
+	}
+	for k, v := range ls.state.HallDownButtons {
+		if v.LastStatus != globalstate.BtnStateDone {
+			floor, _ := strconv.Atoi(k)
+			bsu := globalstate.ButtonStatusUpdate{
+				Floor:  uint(floor),
+				Dir:    down,
+				Status: globalstate.BtnStateUnassigned,
+			}
+			ret = append(ret, bsu)
+		}
+	}
+	return ret
 }

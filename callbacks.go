@@ -12,6 +12,7 @@ import (
 // Globalstate callbacks
 // =============================================================================
 func onIncomingCommand(f int, dir string) {
+	mainlogger.Println("Incomming command")
 	// TODO: Doublecheck if the lift isn't currently busy
 	switch dir {
 	case "up":
@@ -29,7 +30,25 @@ func onAquiredConsensus() {
 	mainlogger.Println("Aquired consensus")
 	haveConsensusBtnSyncCh <- true
 	haveConsensusAssignerCh <- true
+
+	// Send share all unhandled orders
+	failed := 0
+	buttonUpdates := ls.GetAllShareworthyUpdates()
+	for _, bsu := range buttonUpdates {
+		err := gs.UpdateButtonStatus(bsu)
+		if err != nil {
+			mainlogger.Printf("[INFO] Unable to send button update to network. Storing locally.\n")
+			if err := ls.UpdateButtonStatus(bsu); err != nil {
+				mainlogger.Printf("[ERROR] Unable to handle button press: %v", err.Error())
+				failed++
+				continue
+			}
+
+		}
+	}
+	mainlogger.Printf("[INFO] Shared relevant button statuses with peers, %d in total. %d failed\n", len(buttonUpdates), failed)
 }
+
 func onLostConsensus() {
 	mainlogger.Println("Lost consensus")
 	haveConsensusBtnSyncCh <- false
@@ -39,19 +58,25 @@ func onLostConsensus() {
 // Driver callbacks
 // =============================================================================
 func onBtnPress(b driver.Btn) {
-	bsu := globalstate.ButtonStatusUpdate{
-		Floor:  uint(b.Floor),
-		Dir:    b.Type.String(),
-		Status: globalstate.BtnStateUnassigned,
-	}
-	err := gs.UpdateButtonStatus(bsu)
-	if err != nil {
-		mainlogger.Printf("[INFO] Unable to send button update to network. Storing locally.\n")
-		if err := ls.UpdateButtonStatus(bsu); err != nil {
-			mainlogger.Printf("[ERROR] Unable to handle button press: %v", err.Error())
-			return
+	if b.Type != driver.Cab {
+		bsu := globalstate.ButtonStatusUpdate{
+			Floor:  uint(b.Floor),
+			Dir:    b.Type.String(),
+			Status: globalstate.BtnStateUnassigned,
 		}
+		err := gs.UpdateButtonStatus(bsu)
+		if err != nil {
+			mainlogger.Printf("[INFO] Unable to send button update to network. Storing locally.\n")
+			if err := ls.UpdateButtonStatus(bsu); err != nil {
+				mainlogger.Printf("[ERROR] Unable to handle button press: %v", err.Error())
+				return
+			}
+		}
+	} else {
+		goToFromInsideCh <- b
 	}
+	fmt.Println(b)
+
 	driver.BtnLEDSet(b)
 }
 
@@ -89,6 +114,7 @@ func onDstReached(b driver.Btn, pickup bool) {
 		}
 	}
 	driver.BtnLEDClear(b)
+	fmt.Println("dst reached")
 	if !pickup {
 		fmt.Println("done with order")
 		orderDoneCh <- struct{}{}
