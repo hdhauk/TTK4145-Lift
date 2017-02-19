@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
 	"math/rand"
 	"os"
@@ -18,15 +17,22 @@ import (
 // Command line parameters
 var nick string
 var simPort string
+var floors int
 
 // Pick ports randomly
 var r = 1024 + rand.Intn(64510)
 var raftPort = r
 
-// Global state is threadsafe and for simplicity available to the whole main package.
+// Both the global and local state are threadsafe and for convenience thus
+// available to the whole main package.
 var gs globalstate.FSM
 var ls *statetools.LocalState
+
+// Set up looging. All packages have their own logger with prefix: [package name]
 var mainlogger = log.New(os.Stderr, "[main] ", log.Ltime|log.Lshortfile)
+
+// Set up internal communication in package main.
+//All communication with other packages are done through callbacks.
 var goToCh = make(chan driver.Btn, 9)
 var goToFromInsideCh = make(chan driver.Btn, 9)
 var orderDoneCh = make(chan interface{})
@@ -34,14 +40,16 @@ var haveConsensusBtnSyncCh = make(chan bool)
 var haveConsensusAssignerCh = make(chan bool)
 
 func main() {
-	// Parse arg flags
+	// Parse command line argument flags
 	flag.StringVar(&nick, "nick", strconv.Itoa(os.Getpid()), "Nickname of this peer. Default is the process id (PID)")
 	flag.StringVar(&simPort, "sim", "", "Listening port of the simulator")
 	flag.IntVar(&raftPort, "raft", raftPort, "Communication port for raft")
+	flag.IntVar(&floors, "floors", 4, "Number of floors on the lift.")
 	flag.Parse()
-	fmt.Printf("raftPort: %d, nick=%s, simulator=%s\n", raftPort, nick, simPort)
+	mainlogger.Printf("[INFO] Raft port: %d, Nickname: %s, Simulator port: %s, Floors: %d\n", raftPort, nick, simPort, floors)
 
-	// Initialize peer discovery
+	// Initialize peer discovery. Any discovered are only used for initializing
+	// the global store.
 	peers := make(map[string]peerdiscovery.Peer)
 	discoveryConfig := peerdiscovery.Config{
 		Nick:              nick,
@@ -54,11 +62,11 @@ func main() {
 		Logger:            log.New(os.Stderr, "[peerdiscovery] ", log.Ltime|log.Lshortfile),
 	}
 	go peerdiscovery.Start(discoveryConfig)
-	time.Sleep(2 * discoveryConfig.BroadcastInterval)
+	time.Sleep(2 * discoveryConfig.BroadcastInterval) // Allow for detection of any remote peers
 
 	// Initialize driver
 	driverConfig := driver.Config{
-		Floors:       9,
+		Floors:       floors,
 		OnBtnPress:   onBtnPress,
 		OnNewStatus:  onNewStatus,
 		OnDstReached: onDstReached,
@@ -68,7 +76,7 @@ func main() {
 		driverConfig.SimMode = true
 		driverConfig.SimPort = simPort
 	}
-
+	// Start driver and wait for it to complete initialization.
 	driverInitDone := make(chan error)
 	go driver.Init(driverConfig, driverInitDone)
 	err := <-driverInitDone
@@ -82,7 +90,7 @@ func main() {
 	globalstateConfig := globalstate.Config{
 		RaftPort:           raftPort,
 		OwnIP:              ip,
-		Floors:             9,
+		Floors:             floors,
 		OnAquiredConsensus: onAquiredConsensus,
 		OnLostConsensus:    onLostConsensus,
 		OnIncomingCommand:  onIncomingCommand,
@@ -107,137 +115,11 @@ func main() {
 	// Set up local state in case network connection is lost.
 	ls = statetools.NewLocalState()
 
-	// Start syncinc button leds with the global state.
-	go syncBtnLEDs(gs)
-	go liftDriver()
-	go noConsensusAssigner()
+	// Start workers for coordination
+	go syncBtnLEDs(gs)       // Only active when consensus is achieved.
+	go orderQueuer()         // Always active.
+	go noConsensusAssigner() // Only active when consensus is missing.
 
 	// Block forever
 	select {}
-}
-
-func syncBtnLEDs(globalstate globalstate.FSM) {
-	online := false
-	for {
-		select {
-		case b := <-haveConsensusBtnSyncCh:
-			online = b
-		case <-time.After(1 * time.Microsecond):
-
-		}
-		if !online {
-			continue
-		}
-
-		time.Sleep(500 * time.Millisecond)
-		s, err := globalstate.GetState()
-		if err != nil {
-			continue
-		}
-		for k, v := range s.HallUpButtons {
-			f, _ := strconv.Atoi(k)
-			if v.LastStatus == "done" {
-				driver.BtnLEDClear(driver.Btn{Floor: f, Type: driver.HallUp})
-			} else {
-				driver.BtnLEDSet(driver.Btn{Floor: f, Type: driver.HallUp})
-			}
-		}
-
-		for k, v := range s.HallDownButtons {
-			f, _ := strconv.Atoi(k)
-			if v.LastStatus == "done" {
-				driver.BtnLEDClear(driver.Btn{Floor: f, Type: driver.HallDown})
-			} else {
-				driver.BtnLEDSet(driver.Btn{Floor: f, Type: driver.HallDown})
-			}
-		}
-
-	}
-}
-
-func liftDriver() {
-	outsideQueue := btnQueue{}
-	insideQueue := btnQueue{}
-	ready := true
-	insideTimeout := time.Now()
-
-	for {
-		select {
-		case dst := <-goToCh:
-			outsideQueue.Queue(dst)
-			mainlogger.Println("Added to outside queue")
-		case dst := <-goToFromInsideCh:
-			mainlogger.Println("Added to inside queue")
-			insideQueue.Queue(dst)
-		case <-orderDoneCh:
-			mainlogger.Println("liftDriver ready!")
-			ready = true
-			insideTimeout = time.Now()
-		case <-time.After(100 * time.Millisecond):
-		}
-
-		if !insideQueue.IsEmpty() && ready {
-			dst := insideQueue.Dequeue()
-			mainlogger.Println("Took order from inside")
-			driver.GoToFloor(dst.Floor, "")
-			ready = false
-		} else if ready &&
-			!outsideQueue.IsEmpty() &&
-			time.Since(insideTimeout) > 3*time.Second {
-
-			mainlogger.Println("Took order from outside")
-			dst := outsideQueue.Dequeue()
-			driver.GoToFloor(dst.Floor, dst.Type.String())
-			ready = false
-		}
-	}
-}
-
-func noConsensusAssigner() {
-	online := true
-	for {
-
-		select {
-		case b := <-haveConsensusAssignerCh:
-			online = b
-		case <-time.After(1 * time.Second):
-		}
-		if online {
-			continue
-		}
-
-		floor, dir := ls.GetNextOrder()
-		bsu := globalstate.ButtonStatusUpdate{
-			Floor:  uint(floor),
-			Dir:    dir,
-			Status: globalstate.BtnStateAssigned,
-		}
-		if dir == "up" {
-			fmt.Println("up")
-			goToCh <- driver.Btn{Floor: floor, Type: driver.HallUp}
-			ls.UpdateButtonStatus(bsu)
-		} else if dir == "down" {
-			fmt.Println("down")
-			goToCh <- driver.Btn{Floor: floor, Type: driver.HallDown}
-			ls.UpdateButtonStatus(bsu)
-		}
-
-	}
-}
-
-type btnQueue struct {
-	btns []driver.Btn
-}
-
-func (bq *btnQueue) Queue(b driver.Btn) {
-	bq.btns = append(bq.btns, b)
-}
-func (bq *btnQueue) Dequeue() (b driver.Btn) {
-	b = bq.btns[0]
-	bq.btns = bq.btns[1:]
-	return
-}
-
-func (bq *btnQueue) IsEmpty() bool {
-	return len(bq.btns) == 0
 }

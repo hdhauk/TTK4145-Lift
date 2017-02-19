@@ -1,9 +1,9 @@
 package driver
 
-// Elevator functions
+// Lift functions
 //==============================================================================
 func initHW(port string) {
-	// Initalize connection to elevator
+	// Initalize connection to lift
 	if ioInit() != nil {
 		cfg.Logger.Fatalln("Failed to connect to the elvator. Make sure everything is turned on and try again!")
 	}

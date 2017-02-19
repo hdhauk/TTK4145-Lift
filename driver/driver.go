@@ -1,12 +1,12 @@
 /*
-Package driver provides control of both simulated and actual elevators.
+Package driver provides control of both simulated and actual lifts.
 The package also usure that the floor-indicator always show the correct floor,
 and that the carrige always have a closed door unless stationary at a floor.*/
 package driver
 
 import "fmt"
 
-// GoToFloor sends the elevator carrige to the desired floor and stop there,
+// GoToFloor sends the lift carriage to the desired floor and stop there,
 // unless it is stopped before arriving at its destination.
 // A second call to the function will void the previous order if the carrige
 // haven't reached its destination.
@@ -20,7 +20,7 @@ func GoToFloor(floor int, dir string) {
 	}
 }
 
-// StopForPickup can be called if the elevator should stop in the next floor,
+// StopForPickup can be called if the lift should stop in the next floor,
 // to pick someone up.
 func StopForPickup(f int, d string) {
 	stopForPickupCh <- dst{f, d}
@@ -51,11 +51,11 @@ type BtnType int
 
 // Button type constants
 const (
-	// HallUp is located outside of the elevator
+	// HallUp is located outside of the lift.
 	HallUp BtnType = iota
-	// HallDown is located outside of the elevator
+	// HallDown is located outside of the lift.
 	HallDown
-	// Cab is located inside of the elevator
+	// Cab is located inside of the lift.
 	Cab
 )
 

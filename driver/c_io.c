@@ -2,7 +2,7 @@
 // These functions provide and interface to libComedi limited to use in
 // the real time lab.
 //
-// 2006, Martin Korsgaard <-- HEI Martin. Så gøy du stalker deg selv i repoen min:)
+// 2006, Martin Korsgaard <-- HEI Martin:) Thanks for stopping by and stalking yourself!
 
 
 #include "c_io.h"

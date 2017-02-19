@@ -11,7 +11,7 @@ var txWithoutResp = make(chan string)
 var rx = make(chan []byte)
 var closeSimConn = make(chan bool)
 
-// Emulated elevator functions
+// Emulated lift functions
 //==============================================================================
 func initSim(simPort string) {
 

@@ -1,6 +1,6 @@
 // Channel definitions for elevator control using LibComedi
 //
-// 2006, Martin Korsgaard <-- HEI Martin. Så gøy du stalker deg selv i repoen min:)
+// 2006, Martin Korsgaard <-- HEI Martin:) Thanks for stopping by and stalking yourself!
 #ifndef __INCLUDE_DRIVER_CHANNELS_H__
 #define __INCLUDE_DRIVER_CHANNELS_H__
 

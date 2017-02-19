@@ -60,7 +60,7 @@ func (rw *raftwrapper) LeaderMonitor(updateBtnStatus func(bs ButtonStatusUpdate)
 		expiredBtns := getTimedOutOrders(state, orderTimeout)
 		var assignees []string
 
-		// Assign to elevators based on cost
+		// Assign to lifts based on cost
 		for _, b := range expiredBtns {
 			lowestCostPeer := rw.config.CostFunction(state, b.Floor, b.Dir)
 			if lowestCostPeer == "" || stringInSlice(lowestCostPeer, assignees) {

@@ -52,44 +52,44 @@ func newRaftWrapper(rPortStr string, floors int) *raftwrapper {
 	}
 }
 
-func (f *raftwrapper) Start(enableSingle bool) error {
+func (rw *raftwrapper) Start(enableSingle bool) error {
 	// Set up Raft configuration
 	raftCfg := raft.DefaultConfig()
-	if f.config.DisableRaftLogging {
+	if rw.config.DisableRaftLogging {
 		raftCfg.Logger = log.New(ioutil.Discard, "", log.Ltime)
 	} else {
 		raftCfg.Logger = log.New(os.Stderr, "[raft] ", log.Ltime|log.Lshortfile)
 	}
 
 	// Set up Raft communication.
-	rSocket := ":" + f.RaftPort
+	rSocket := ":" + rw.RaftPort
 	localIP := getOutboundIP()
 	addr, err := net.ResolveTCPAddr("tcp", localIP+rSocket)
 	if err != nil {
-		f.logger.Printf("[ERROR] Unable to resolve TCP raft-endpoint: %s\n", err.Error())
+		rw.logger.Printf("[ERROR] Unable to resolve TCP raft-endpoint: %s\n", err.Error())
 		return err
 	}
-	trans, err := raft.NewTCPTransportWithLogger(rSocket, addr, 3, 5*time.Second, f.logger)
+	trans, err := raft.NewTCPTransportWithLogger(rSocket, addr, 3, 5*time.Second, rw.logger)
 	if err != nil {
-		f.logger.Printf("[ERROR] Unable to set up Raft TCP Transport: %v\n", err.Error())
+		rw.logger.Printf("[ERROR] Unable to set up Raft TCP Transport: %v\n", err.Error())
 		return err
 	}
 
 	// Create peer storage
-	peerStore := raft.NewJSONPeers(f.RaftDir, trans)
+	peerStore := raft.NewJSONPeers(rw.RaftDir, trans)
 
 	// Enable single-mode in order to allow bootstrapping of a new raft-cluster
 	// if no other peers are provided during initialization.
 	if enableSingle {
-		f.logger.Println("[INFO] Starting raft with single-node mode enabled.")
+		rw.logger.Println("[INFO] Starting raft with single-node mode enabled.")
 		raftCfg.EnableSingleNode = true
 		raftCfg.DisableBootstrapAfterElect = false
 	}
 
 	// Create a snapshot store, allowing the Raft to truncate the log.
-	snapshots, err := raft.NewFileSnapshotStoreWithLogger(f.RaftDir, 2, f.logger)
+	snapshots, err := raft.NewFileSnapshotStoreWithLogger(rw.RaftDir, 2, rw.logger)
 	if err != nil {
-		f.logger.Printf("[ERROR] Unable to create Snapshot store: %v\n", err.Error())
+		rw.logger.Printf("[ERROR] Unable to create Snapshot store: %v\n", err.Error())
 		return fmt.Errorf("file snapshot store: %s", err)
 	}
 
@@ -99,13 +99,13 @@ func (f *raftwrapper) Start(enableSingle bool) error {
 	stableStore := raft.NewInmemStore()
 
 	// Instantiate Raft
-	ra, err := raft.NewRaft(raftCfg, f, logStore, stableStore, snapshots, peerStore, trans)
+	ra, err := raft.NewRaft(raftCfg, rw, logStore, stableStore, snapshots, peerStore, trans)
 	if err != nil {
-		f.logger.Printf("[ERROR] Unable to instansiate raft: %v\n", err.Error())
+		rw.logger.Printf("[ERROR] Unable to instansiate raft: %v\n", err.Error())
 		return fmt.Errorf("new raft: %s", err)
 	}
-	f.raft = ra
-	f.logger.Println("[INFO] Successfully initalized Raft")
+	rw.raft = ra
+	rw.logger.Println("[INFO] Successfully initalized Raft")
 	return nil
 }
 
@@ -116,23 +116,23 @@ func (f *raftwrapper) Start(enableSingle bool) error {
 // It returns a value which will be made available in the
 // ApplyFuture returned by Raft.Apply method if that
 // method was called on the same Raft node as the FSM.
-func (f *raftwrapper) Apply(l *raft.Log) interface{} {
+func (rw *raftwrapper) Apply(l *raft.Log) interface{} {
 	var c command
 	if err := json.Unmarshal(l.Data, &c); err != nil {
-		f.logger.Fatalf(fmt.Sprintf("failed to unmarshal command: %s", err.Error()))
+		rw.logger.Fatalf(fmt.Sprintf("failed to unmarshal command: %s", err.Error()))
 	}
 
 	switch c.Type {
 	case "updateFloor":
-		return f.applyUpdateFloor(c.Value)
+		return rw.applyUpdateFloor(c.Value)
 	case "nodeUpdate":
-		return f.applyNodeUpdate(c.Key, c.Value)
+		return rw.applyNodeUpdate(c.Key, c.Value)
 	case "btnUpUpdate":
-		return f.applyBtnUpUpdate(c.Key, c.Value)
+		return rw.applyBtnUpUpdate(c.Key, c.Value)
 	case "btnDownUpdate":
-		return f.applyBtnDownUpdate(c.Key, c.Value)
+		return rw.applyBtnDownUpdate(c.Key, c.Value)
 	default:
-		f.logger.Printf(fmt.Sprintf("Unrecognized command: %s", c.Type))
+		rw.logger.Printf(fmt.Sprintf("Unrecognized command: %s", c.Type))
 		return nil
 	}
 }
@@ -143,24 +143,24 @@ func (f *raftwrapper) Apply(l *raft.Log) interface{} {
 // threads, but Apply will be called concurrently with Persist. This means
 // the FSM should be implemented in a fashion that allows for concurrent
 // updates while a snapshot is happening.
-func (f *raftwrapper) Snapshot() (raft.FSMSnapshot, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	return &fsmSnapshot{store: f.state.DeepCopy()}, nil
+func (rw *raftwrapper) Snapshot() (raft.FSMSnapshot, error) {
+	rw.mu.Lock()
+	defer rw.mu.Unlock()
+	return &fsmSnapshot{store: rw.state.DeepCopy()}, nil
 }
 
 // Restore is used to restore an FSM from a snapshot. It is not called
 // concurrently with any other command. The FSM must discard all previous
 // state.
-func (f *raftwrapper) Restore(rc io.ReadCloser) error {
+func (rw *raftwrapper) Restore(rc io.ReadCloser) error {
 	newState := State{}
 	if err := json.NewDecoder(rc).Decode(&newState); err != nil {
-		f.logger.Printf("Failed to decode FSM from snapshot: %v\n", err)
+		rw.logger.Printf("Failed to decode FSM from snapshot: %v\n", err)
 		return err
 	}
 	// No need to lock the mutex as this command isn't run concurrently with any
 	// other command (according to Hashicorp docs)
-	f.state = newState
+	rw.state = newState
 	return nil
 }
 
@@ -168,38 +168,38 @@ func (f *raftwrapper) Restore(rc io.ReadCloser) error {
 // =============================================================================
 
 // Getstatus returns the current raft-status (leader, candidate or follower)
-func (f *raftwrapper) GetStatus() uint32 {
-	return uint32(f.raft.State())
+func (rw *raftwrapper) GetStatus() uint32 {
+	return uint32(rw.raft.State())
 }
 
 // GetLeader returns the ip:port of the current leader
-func (f *raftwrapper) GetLeader() string {
-	return f.raft.Leader()
+func (rw *raftwrapper) GetLeader() string {
+	return rw.raft.Leader()
 }
 
 // Join joins a node, located at addr, to this store. The node must be ready to
 // respond to Raft communications at that address.
-func (f *raftwrapper) Join(addr string) error {
-	future := f.raft.AddPeer(addr)
+func (rw *raftwrapper) Join(addr string) error {
+	future := rw.raft.AddPeer(addr)
 	if future.Error() != nil {
-		f.logger.Printf("[WARN] Unable to add peer: %v\n", future.Error())
+		rw.logger.Printf("[WARN] Unable to add peer: %v\n", future.Error())
 		return future.Error()
 	}
-	f.logger.Printf("[INFO] Successfully joined node %s to the raft.\n", addr)
+	rw.logger.Printf("[INFO] Successfully joined node %s to the raft.\n", addr)
 	return nil
 }
 
 // GetState returns a copy of the full state as it currently stands.
-func (f *raftwrapper) GetState() State {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	return f.state.DeepCopy()
+func (rw *raftwrapper) GetState() State {
+	rw.mu.Lock()
+	defer rw.mu.Unlock()
+	return rw.state.DeepCopy()
 }
 
-func (f *raftwrapper) UpdateLiftStatus(ls LiftStatus) error {
+func (rw *raftwrapper) UpdateLiftStatus(ls LiftStatus) error {
 	// Make sure the node currently hold leadership.
-	if f.raft.State() != raft.Leader {
-		f.logger.Printf("[WARN] Unable to update lift status. Not currently leader.\n")
+	if rw.raft.State() != raft.Leader {
+		rw.logger.Printf("[WARN] Unable to update lift status. Not currently leader.\n")
 		return fmt.Errorf("not leader")
 	}
 
@@ -216,19 +216,19 @@ func (f *raftwrapper) UpdateLiftStatus(ls LiftStatus) error {
 	// Encode to json
 	b, err := json.Marshal(cmd)
 	if err != nil {
-		f.logger.Printf("[ERROR] Failed to encode json: %s\n", err.Error())
+		rw.logger.Printf("[ERROR] Failed to encode json: %s\n", err.Error())
 		return err
 	}
 
 	// Apply command to raft
-	future := f.raft.Apply(b, 5*time.Second)
+	future := rw.raft.Apply(b, 5*time.Second)
 	return future.Error()
 }
 
-func (f *raftwrapper) UpdateButtonStatus(bsu ButtonStatusUpdate) error {
+func (rw *raftwrapper) UpdateButtonStatus(bsu ButtonStatusUpdate) error {
 	// Make sure the node currently hold leadership.
-	if f.raft.State() != raft.Leader {
-		f.logger.Printf("[WARN] Unable to update button status. Not currently leader.\n")
+	if rw.raft.State() != raft.Leader {
+		rw.logger.Printf("[WARN] Unable to update button status. Not currently leader.\n")
 		return fmt.Errorf("not leader")
 	}
 
@@ -239,7 +239,7 @@ func (f *raftwrapper) UpdateButtonStatus(bsu ButtonStatusUpdate) error {
 	} else if bsu.Dir == "down" || bsu.Dir == "DOWN" {
 		t = "btnDownUpdate"
 	} else {
-		f.logger.Printf("[ERROR] Unable to parse direction in button update: %s\n", bsu.Dir)
+		rw.logger.Printf("[ERROR] Unable to parse direction in button update: %s\n", bsu.Dir)
 		return fmt.Errorf("unable to parse direction: %s", bsu.Dir)
 	}
 
@@ -254,7 +254,7 @@ func (f *raftwrapper) UpdateButtonStatus(bsu ButtonStatusUpdate) error {
 	// been unmarhaled by the same library.
 	v, err := json.Marshal(status)
 	if err != nil {
-		f.logger.Printf("[ERROR] Unable to marshal status: %s\n", err.Error())
+		rw.logger.Printf("[ERROR] Unable to marshal status: %s\n", err.Error())
 		return err
 	}
 
@@ -268,12 +268,12 @@ func (f *raftwrapper) UpdateButtonStatus(bsu ButtonStatusUpdate) error {
 	// Marshal command to json
 	b, err := json.Marshal(cmd)
 	if err != nil {
-		f.logger.Printf("[ERROR] Failed to marshal raft log command: %s\n", err.Error())
+		rw.logger.Printf("[ERROR] Failed to marshal raft log command: %s\n", err.Error())
 		return err
 	}
 
 	// Apply command to raft
-	future := f.raft.Apply(b, 5*time.Second)
+	future := rw.raft.Apply(b, 5*time.Second)
 	return future.Error()
 
 }
@@ -299,73 +299,73 @@ type command struct {
 	Value []byte `json:"value,omitempty"`
 }
 
-func (f *raftwrapper) applyUpdateFloor(floor interface{}) interface{} {
-	f.mu.Lock()
-	defer f.mu.Unlock()
+func (rw *raftwrapper) applyUpdateFloor(floor interface{}) interface{} {
+	rw.mu.Lock()
+	defer rw.mu.Unlock()
 	floorInt, _ := floor.(uint)
 	// TODO: Implement test for the floorInt
 	// if !ok {
 	// 	f.logger.Printf("[ERROR] Unable to apply floorUpdate. Bad floor: %v\n", floor)
 	// 	return nil
 	// }
-	f.state.Floors = floorInt
+	rw.state.Floors = floorInt
 	return nil
 }
 
-func (f *raftwrapper) applyNodeUpdate(nodeID string, e []byte) interface{} {
+func (rw *raftwrapper) applyNodeUpdate(nodeID string, e []byte) interface{} {
 	// Unmarshal liftstatus
 	var lift LiftStatus
 	err := json.Unmarshal(e, &lift)
 	if err != nil {
-		f.logger.Printf("[ERROR] Unable to unmarhal liftStatus: %s\n", err.Error())
+		rw.logger.Printf("[ERROR] Unable to unmarhal liftStatus: %s\n", err.Error())
 		return fmt.Errorf("unable to unmarshal liftstats")
 	}
 
 	// Update the actual datastore entry
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.state.Nodes[nodeID] = lift
+	rw.mu.Lock()
+	defer rw.mu.Unlock()
+	rw.state.Nodes[nodeID] = lift
 	return nil
 }
 
-func (f *raftwrapper) applyBtnUpUpdate(floor string, b []byte) interface{} {
+func (rw *raftwrapper) applyBtnUpUpdate(floor string, b []byte) interface{} {
 	// Unmarshal ButtonStatusUpdate
 	var status Status
 	err := json.Unmarshal(b, &status)
 	if err != nil {
-		f.logger.Printf("[ERROR] Unable to unmarshal status: %s\n", err.Error())
+		rw.logger.Printf("[ERROR] Unable to unmarshal status: %s\n", err.Error())
 		return fmt.Errorf("unable to unmarshal ButtonUpStatusUpdate: %s", err.Error())
 	}
 
 	// Update the actual datastore entry
-	f.mu.Lock()
-	defer f.mu.Unlock()
+	rw.mu.Lock()
+	defer rw.mu.Unlock()
 	// Discard any transitions from "done" --> "assigned"
-	if f.state.HallUpButtons[floor].LastStatus == BtnStateDone && status.LastStatus == BtnStateAssigned {
+	if rw.state.HallUpButtons[floor].LastStatus == BtnStateDone && status.LastStatus == BtnStateAssigned {
 		return nil
 	}
-	f.state.HallUpButtons[floor] = status
+	rw.state.HallUpButtons[floor] = status
 	return nil
 }
 
-func (f *raftwrapper) applyBtnDownUpdate(floor string, b []byte) interface{} {
+func (rw *raftwrapper) applyBtnDownUpdate(floor string, b []byte) interface{} {
 	// Unmarshal ButtonStatusUpdate
 	var status Status
 	err := json.Unmarshal(b, &status)
 	if err != nil {
-		f.logger.Printf("[ERROR] Unable to unmarshal status: %s\n", err.Error())
+		rw.logger.Printf("[ERROR] Unable to unmarshal status: %s\n", err.Error())
 		return fmt.Errorf("unable to unmarshal ButtonDownStatusUpdate: %s", err.Error())
 	}
 
 	// Update the actual datastore entry
-	f.mu.Lock()
-	defer f.mu.Unlock()
+	rw.mu.Lock()
+	defer rw.mu.Unlock()
 
 	// Discard any transitions from "done" --> "assigned"
-	if f.state.HallDownButtons[floor].LastStatus == BtnStateDone && status.LastStatus == BtnStateAssigned {
+	if rw.state.HallDownButtons[floor].LastStatus == BtnStateDone && status.LastStatus == BtnStateAssigned {
 		return nil
 	}
-	f.state.HallDownButtons[floor] = status
+	rw.state.HallDownButtons[floor] = status
 	return nil
 }
 

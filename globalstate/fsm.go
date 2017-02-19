@@ -13,7 +13,8 @@ import (
 	"time"
 )
 
-// FSM asdasd
+// FSM hold all logic and essentially IS the globalstate handle. You may
+// instansiate several FSM as long as they have different ports.
 type FSM struct {
 	wrapper  *raftwrapper
 	comm     *commService
@@ -21,7 +22,7 @@ type FSM struct {
 	initDone bool
 }
 
-// Init sets up and start the FSM
+// Init sets up and start the FSM.
 func (f *FSM) Init(config Config) error {
 	// Parse ports
 	rPort := config.RaftPort
@@ -86,7 +87,7 @@ func (f *FSM) Init(config Config) error {
 	return nil
 }
 
-// Close shuts down the FSM
+// Close shuts down the FSM in a safe manner.
 func (f *FSM) Close() {
 	close(f.wrapper.shutdown)
 	f.logger.Println("[INFO] Shutting down raft")

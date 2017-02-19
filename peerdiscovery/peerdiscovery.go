@@ -1,6 +1,7 @@
 /*
 Package peerdiscovery provides automatic detection of other peers in the same subnet.
-It does this by utlizing broadcastmessages over UDP.
+It does this by utlizing broadcastmessages over UDP. The package is based on
+
 */
 package peerdiscovery
 
@@ -12,7 +13,7 @@ import (
 	"time"
 )
 
-// Peer defines a peer
+// Peer holds information of address, ports and when it was detected.
 type Peer struct {
 	IP        string
 	Nick      string
@@ -22,8 +23,8 @@ type Peer struct {
 	lastSeen  time.Time
 }
 
-// Copy returns a copy of the peer
-func (p *Peer) Copy() Peer {
+// DeepCopy safely returns a copy of the peer.
+func (p *Peer) DeepCopy() Peer {
 	new := Peer{
 		IP:       p.IP,
 		Nick:     p.Nick,
@@ -33,7 +34,7 @@ func (p *Peer) Copy() Peer {
 	return new
 }
 
-// Config defines all nessesary configuration parameters
+// Config defines configuration for the package, including callbacks.
 type Config struct {
 	Nick              string
 	RaftPort          int
@@ -45,7 +46,6 @@ type Config struct {
 	Logger            *log.Logger
 }
 
-// broadcastHeartBeats broadcast the supplied id every 15ms
 func broadcastHeartBeats(c Config) {
 	conn := dialBroadcastUDP(c.BroadcastPort)
 	addr, _ := net.ResolveUDPAddr("udp4", fmt.Sprintf("255.255.255.255:%d", c.BroadcastPort))
@@ -94,7 +94,7 @@ func Start(c Config) {
 
 		id := string(buf[:n]) // Either "" or on the form: nick"@"ip-address":"raft-port"
 
-		// Stop function from triggering on own heartbeats
+		// Avoid triggering on own heartbeats.
 		if strings.Contains(id, c.Nick) {
 			continue
 		}
@@ -112,7 +112,7 @@ func Start(c Config) {
 					firstSeen: time.Now(),
 					lastSeen:  time.Now(),
 				}
-				c.OnNewPeer(peers[id].Copy())
+				c.OnNewPeer(peers[id].DeepCopy())
 			}
 			peers[id].lastSeen = time.Now()
 		}

@@ -33,7 +33,7 @@ func autoPilot(apFloorCh <-chan int, driverInitDone chan error) {
 		currentDir = stop
 		currentDst.floor = lastFloor
 	}
-	cfg.Logger.Printf("[INFO] Ready with elevator stationary in floor: %v\n", lastFloor)
+	cfg.Logger.Printf("[INFO] Ready with lift stationary in floor: %v\n", lastFloor)
 	close(driverInitDone)
 
 	// Pickup destination
@@ -82,7 +82,7 @@ func autoPilot(apFloorCh <-chan int, driverInitDone chan error) {
 		case d := <-floorDstCh:
 			currentDst = d
 			/*
-				- Case 1: My new destination is coincidentaly the elevator currenly is parked
+				- Case 1: My new destination is coincidentaly the lift currently is parked
 						-> Open the door
 				- Case 2: My new destination is the floor that I just left
 						-> Turn back
@@ -100,7 +100,7 @@ func autoPilot(apFloorCh <-chan int, driverInitDone chan error) {
 					break selector
 				// Case 2a
 				case up:
-					// NOTE: The timer make sure that the elevator have actually left
+					// NOTE: The timer make sure that the lift have actually left
 					// the sensor. Otherwise it will not trigger the floor sensor,
 					// and in rare cases will end up going beyond the area of operation.
 					time.Sleep(200 * time.Millisecond)
@@ -110,7 +110,7 @@ func autoPilot(apFloorCh <-chan int, driverInitDone chan error) {
 					break selector
 				// Case 2b
 				case down:
-					// NOTE: The timer make sure that the elevator have actually left
+					// NOTE: The timer make sure that the lift have actually left
 					// the sensor. Otherwise it will not trigger the floor sensor,
 					// and in rare cases will end up going beyond the area of operation.
 					time.Sleep(200 * time.Millisecond)

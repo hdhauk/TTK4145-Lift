@@ -4,7 +4,7 @@
 
 ### Requirements
 * Ubuntu 16.10
-* Go 1.7.4
+* Go 1.5.3
 * DMD 2.073.0 (only for using the simulator)
 
 Only tested on these versions, but will likely work unless you have any ancient versions
@@ -34,17 +34,15 @@ sudo make install
 ~~~~
 
 ### 2. Install Go dependencies
-The project utilize several publicly available libraries, most notably Hashicorps Raft library.
+The project utilize Hashicorps Raft library.
 To download all necessary dependencies open a terminal window in the project folder and run
 ~~~~
 cd $GOPATH/src/bitbucket.org/halvor_haukvik/ttk4145-elevator
 go get -t ./..
 ~~~~
-or install them independently
+or install it directly using
 ~~~~
 go get github.com/hashicorp/raft
-go get github.com/hashicorp/raft-boltdb
-go get github.com/satori/go.uuid
 ~~~~
 
 
@@ -73,7 +71,10 @@ The following options are available
 
 |Argument  |Additional variable    | Description|
 |------|------------|------------|
-|`-nick` | `<nickname>` | Option to give the elevator a specific id. If omitted it will use the process id|
-|`-sim` | `<port>` | When set the controller will start in simulator mode an will attempt to connect to a simulator on the provided port (running on localhost) |
+|`-nick` | name you want | Option to give the elevator a specific id. If omitted it will use the process id|
+|`-sim` | number of the port | When set the controller will start in simulator mode an will attempt to connect to a simulator on the provided port (running on localhost) |
+|-raft|number of the port used for raft communication| Both the port provided and the one above will be used for communication and needs to be available.|
+|-floors|number of floors| Used to provide a custom number of floors. Default is 4|
 
-Example: `./ttk4145-elevator -nick MyElevator -sim 53566`
+
+Example: `./ttk4145-elevator -nick MyElevator -sim 53566 -raft 8000 - floors 9`

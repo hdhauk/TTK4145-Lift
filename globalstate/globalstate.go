@@ -1,20 +1,3 @@
-/*
-Package globalstate is wrapper package for Hashicorps' implementation of the
-Raft consensus protocol. See https://github.com/hashicorp/raft.
-
-For a description of how the Raft algorithm works see:
- - http://thesecretlivesofdata.com/raft/
- - https://raft.github.io/
- - https://raft.github.io/raft.pdf
-
-TL;DR:
-
-	Raft provide an algorithm for ensuring consensus in the cluser, which we in
-	this project use for keeping track of:
-	* Last registered floor for all elevators
-	* Whether an elevator is at a standstill or moving somewhere
-	* What buttons are pressed in each floor.
-*/
 package globalstate
 
 import (
@@ -35,25 +18,47 @@ import (
 const (
 	// BtnStateUnassigned is an button that have been pressed but no further action taken.
 	BtnStateUnassigned = "unassigned"
-	// BtnStateAssigned is a pressed button that the leader have dispatched an elevator to.
+	// BtnStateAssigned is a pressed button that the leader have dispatched an lifts to.
 	BtnStateAssigned = "assigned"
 	// BtnStateDone is a button that is ready to be pressed (ie. no LED lit)
 	BtnStateDone = "done"
 )
 
-// Config defines ...TODO: Something informative here...
+// Config contain all configuration details and callbacks for the FSM.
 type Config struct {
-	RaftPort           int
-	InitalPeer         string
-	OwnIP              string
-	Floors             int
-	OnPromotion        func()
-	OnDemotion         func()
+	// Port for raft RCP communication. The port above will also be binded, and is used for user-initiated communication over HTTP.
+	RaftPort int
+
+	// If supplied the raft will attempt to connect to any cluster the supplied peer is connected to.
+	// If left blank the FSM instansiate a brand new raft and elect itself leader.
+	InitalPeer string
+
+	// OwnIP may be manually be set. If not supplied it will be infered by the package if needed.
+	OwnIP string
+
+	// Number of floors on the lifts in the cluster. Only used for calculating timouts.
+	Floors int
+
+	// Called once whenever the node win or loose the raft-leadership.
+	OnPromotion func()
+	OnDemotion  func()
+
+	// Called once whenever the two leader elections in a row fail to elect a leader.
 	OnAquiredConsensus func()
-	OnLostConsensus    func()
-	OnIncomingCommand  func(floor int, dir string)
-	CostFunction       func(s State, floor int, dir string) string
-	Logger             *log.Logger
+
+	// Called once whenever the consensus is regained and a leader is elected.
+	OnLostConsensus func()
+
+	// Called once whenever the leader have assigned an order to the node.
+	OnIncomingCommand func(floor int, dir string)
+
+	// Used by the leader to assign orders.
+	CostFunction func(s State, floor int, dir string) string
+
+	Logger *log.Logger
+
+	// Raft may produce a considerable amount of logging, espessialy whenever a node
+	// fail to respond. Logging from the globalstate package itself is still active.
 	DisableRaftLogging bool
 }
 
@@ -76,7 +81,7 @@ type ButtonStatusUpdate struct {
 // Public facing functions
 // =============================================================================
 
-// UpdateLiftStatus asdasdas asdasd
+// UpdateLiftStatus updates the globalstate with the provided liftStatus.
 func (f *FSM) UpdateLiftStatus(ls LiftStatusUpdate) error {
 	if !f.initDone {
 		return fmt.Errorf("globalstate not yet initalized")

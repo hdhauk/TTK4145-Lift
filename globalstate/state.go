@@ -4,7 +4,7 @@ import "time"
 
 // State defines the centralized state managed by the raft-cluster
 type State struct {
-	// Number of floors for all elevators
+	// Number of floors for all lifts.
 	Floors uint
 	// Nodes is the IP:port of all nodes in the system
 	Nodes map[string]LiftStatus
@@ -49,13 +49,13 @@ func (s *State) DeepCopy() State {
 
 // Status defines the status of a button.
 // All buttons of the same type on the same floor are considered equal,
-// and as long as the elevator is online will behave the exact same way.
-// ie. will pressing the up-button at floor 3 on one elevator yield the same
-// result as pressing the same button on another elevator.
+// and as long as the lift is online will behave the exact same way.
+// ie. will pressing the up-button at floor 3 on one lift yield the same
+// result as pressing the same button on another lift.
 type Status struct {
-	AssignedTo string    // elevator.id
+	AssignedTo string    // on the form "ip:port"
 	LastStatus string    // "UNASSIGNED", "ASSIGNED", "DONE"
-	LastChange time.Time //
+	LastChange time.Time // Automatically set by the sender when publishing a statusupdate.
 }
 
 // DeepCopy safely return a copy of the Status
@@ -77,7 +77,7 @@ type LiftStatus struct {
 	LastUpdate                 time.Time
 }
 
-// DeepCopy safely return a copy of the elevator.
+// DeepCopy safely return a copy of the lift.
 func (e *LiftStatus) DeepCopy() LiftStatus {
 	return LiftStatus{
 		ID:                         e.ID,
