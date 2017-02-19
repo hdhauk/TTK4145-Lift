@@ -73,8 +73,8 @@ The following options are available
 |------|------------|------------|
 |`-nick` | name you want | Option to give the elevator a specific id. If omitted it will use the process id|
 |`-sim` | number of the port | When set the controller will start in simulator mode an will attempt to connect to a simulator on the provided port (running on localhost) |
-|-raft|number of the port used for raft communication| Both the port provided and the one above will be used for communication and needs to be available.|
-|-floors|number of floors| Used to provide a custom number of floors. Default is 4|
+|`-raft`|number of the port used for raft communication| Both the port provided and the one above will be used for communication and needs to be available.|
+|`-floors`|number of floors| Used to provide a custom number of floors. Default is 4|
 
 
 Example: `./ttk4145-elevator -nick MyElevator -sim 53566 -raft 8000 - floors 9`
