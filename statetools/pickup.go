@@ -10,6 +10,7 @@ import (
 func ShouldStopAndPickup(s globalstate.State, currentFloor int, currentDir string) bool {
 	// Extract applicable buttons
 	var buttons map[string]globalstate.Status
+
 	if currentDir == "UP" || currentDir == "up" {
 		buttons = s.HallUpButtons
 	} else if currentDir == "DOWN" || currentDir == "down" {
@@ -23,8 +24,8 @@ func ShouldStopAndPickup(s globalstate.State, currentFloor int, currentDir strin
 	if !ok {
 		return false
 	}
-	if status.LastStatus != "done" {
-		return true
+	if status.LastStatus == "done" {
+		return false
 	}
-	return false
+	return true
 }

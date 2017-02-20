@@ -5,6 +5,7 @@ import (
 	"log"
 	"math/rand"
 	"os"
+	"os/signal"
 	"strconv"
 	"time"
 
@@ -119,6 +120,15 @@ func main() {
 	go syncBtnLEDs(gs)       // Only active when consensus is achieved.
 	go orderQueuer()         // Always active.
 	go noConsensusAssigner() // Only active when consensus is missing.
+
+	// Capture Ctrl+C in order to stop the lift if it is moving.
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	go func() {
+		<-c
+		driver.Stop()
+		mainlogger.Fatalf("[WARN] Interrupt detected. Stopping lift and exiting.\n")
+	}()
 
 	// Block forever
 	select {}

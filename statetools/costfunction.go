@@ -29,10 +29,8 @@ func CostFunction(s globalstate.State, floor int, dir string) string {
 
 	// Make sure no other buttons are assigned to this liftID
 	if hasOtherAssignments(s, bestLift) {
-		// fmt.Printf("Best lift (%s) have other assignments already\n", bestLift)
 		return ""
 	} else if bestCost > 99 {
-		// fmt.Printf("No satisfactory lifts. Best: %s with cost %d\n", bestLift, bestCost)
 		return ""
 	}
 
@@ -44,7 +42,7 @@ func calculateCost(
 	floor uint, dir string,
 	state globalstate.State) int {
 
-	// Start with zero cost and penalize
+	// Start with zero cost and penalize as we proceed
 	cost := 0
 
 	// Have the been alive recently?

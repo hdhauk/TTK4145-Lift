@@ -33,7 +33,6 @@ func (s *commService) Start() error {
 		Handler: s,
 	}
 
-	// fmt.Println(s.addr)
 	// Create listener
 	l, err := net.Listen("tcp", s.addr)
 	if err != nil {
@@ -65,16 +64,19 @@ func (s *commService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	p := r.URL.Path
 	// Mux different endpoints
 	if strings.HasPrefix(p, "/join") {
-		// Handle join requests
+		// Join requests
 		s.HandleJoin(w, r)
 	} else if strings.HasPrefix(p, "/update/lift") {
+		// Incomming lift status updates
 		s.HandleLiftUpdate(w, r)
-		// Handle incomming updates
 	} else if strings.HasPrefix(p, "/update/button") {
+		// Incomming button status updates
 		s.HandleButtonUpdate(w, r)
 	} else if strings.HasPrefix(p, "/cmd") {
+		// Incomming commands/assignments from leader
 		s.HandleCmd(w, r)
 	} else if strings.HasPrefix(p, "/debug/dump-state") {
+		// For debugging purposes
 		s.HandleDebugDumpState(w, r)
 	} else {
 		w.WriteHeader(http.StatusNotFound)

@@ -31,14 +31,14 @@ func orderQueuer() {
 
 	for {
 		select {
+		// Listen for incomming orders
 		case dst := <-goToCh:
 			outsideQueue.Queue(dst)
-			mainlogger.Println("Added to outside queue")
 		case dst := <-goToFromInsideCh:
-			mainlogger.Println("Added to inside queue")
 			insideQueue.Queue(dst)
+
+		// Listen for message that the last destination is reached.
 		case <-orderDoneCh:
-			mainlogger.Println("liftDriver ready!")
 			ready = true
 			insideTimeout = time.Now()
 		case <-time.After(100 * time.Millisecond):
@@ -46,14 +46,13 @@ func orderQueuer() {
 
 		if !insideQueue.IsEmpty() && ready {
 			dst := insideQueue.Dequeue()
-			mainlogger.Println("Took order from inside")
 			driver.GoToFloor(dst.Floor, "")
 			ready = false
 		} else if ready &&
 			!outsideQueue.IsEmpty() &&
+			// Give people inside priority if they press within 3 sec.
 			time.Since(insideTimeout) > 3*time.Second {
 
-			mainlogger.Println("Took order from outside")
 			dst := outsideQueue.Dequeue()
 			driver.GoToFloor(dst.Floor, dst.Type.String())
 			ready = false

@@ -13,7 +13,6 @@ import (
 // =============================================================================
 func onIncomingCommand(f int, dir string) {
 	mainlogger.Println("Incomming command")
-	// TODO: Doublecheck if the lift isn't currently busy
 	switch dir {
 	case "up":
 		goToCh <- driver.Btn{Floor: f, Type: driver.HallUp}
@@ -27,7 +26,6 @@ func onPromotion() {}
 func onDemotion() {}
 
 func onAquiredConsensus() {
-	mainlogger.Println("Aquired consensus")
 	haveConsensusBtnSyncCh <- true
 	haveConsensusAssignerCh <- true
 
@@ -46,11 +44,12 @@ func onAquiredConsensus() {
 
 		}
 	}
-	mainlogger.Printf("[INFO] Shared relevant button statuses with peers, %d in total. %d failed\n", len(buttonUpdates), failed)
+	mainlogger.Printf("[INFO] Aquired consensus.\n")
+	mainlogger.Printf("[INFO] Shared relevant button statuses with peers, %d in total. %d failed.\n", len(buttonUpdates), failed)
 }
 
 func onLostConsensus() {
-	mainlogger.Println("Lost consensus")
+	mainlogger.Println("[WARN] Lost consensus. Falling back to local non-consensus mode.")
 	haveConsensusBtnSyncCh <- false
 	haveConsensusAssignerCh <- false
 }
@@ -75,7 +74,6 @@ func onBtnPress(b driver.Btn) {
 	} else {
 		goToFromInsideCh <- b
 	}
-	fmt.Println(b)
 
 	driver.BtnLEDSet(b)
 }
@@ -85,7 +83,7 @@ func onNewStatus(f int, dir string, dstFloor int, dstDir string) {
 	state, _ := gs.GetState()
 	if statetools.ShouldStopAndPickup(state, f, dir) {
 		driver.StopForPickup(f, dir)
-		fmt.Printf("Pickup was available in Floor=%d Dir=%s. Stopping!\n", f, dir)
+		mainlogger.Printf("[INFO] Pickup was available in Floor=%d Dir=%s. Stopping!\n", f, dir)
 	}
 
 	// Send status update
@@ -96,7 +94,7 @@ func onNewStatus(f int, dir string, dstFloor int, dstDir string) {
 		DstBtnDir:    dstDir,
 	}
 	if err := gs.UpdateLiftStatus(lsu); err != nil {
-		// fmt.Println("Failed to send liftupdate...")
+		mainlogger.Println("[WARN] Failed to send liftupdate.")
 	}
 
 }
@@ -114,9 +112,7 @@ func onDstReached(b driver.Btn, pickup bool) {
 		}
 	}
 	driver.BtnLEDClear(b)
-	fmt.Println("dst reached")
 	if !pickup {
-		fmt.Println("done with order")
 		orderDoneCh <- struct{}{}
 	}
 }

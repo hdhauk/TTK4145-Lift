@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"time"
 
 	"bitbucket.org/halvor_haukvik/ttk4145-elevator/driver"
@@ -9,18 +8,21 @@ import (
 )
 
 func noConsensusAssigner() {
-	online := true
+	consensus := true
 	for {
-
 		select {
+		// Listen for updates on the consensus.
 		case b := <-haveConsensusAssignerCh:
-			online = b
+			consensus = b
 		case <-time.After(1 * time.Second):
 		}
-		if online {
+
+		// Proceed with actual work only of there are no consensus.
+		if consensus {
 			continue
 		}
 
+		// Assign orders from local state.
 		floor, dir := ls.GetNextOrder()
 		bsu := globalstate.ButtonStatusUpdate{
 			Floor:  uint(floor),
@@ -28,11 +30,9 @@ func noConsensusAssigner() {
 			Status: globalstate.BtnStateAssigned,
 		}
 		if dir == "up" {
-			fmt.Println("up")
 			goToCh <- driver.Btn{Floor: floor, Type: driver.HallUp}
 			ls.UpdateButtonStatus(bsu)
 		} else if dir == "down" {
-			fmt.Println("down")
 			goToCh <- driver.Btn{Floor: floor, Type: driver.HallDown}
 			ls.UpdateButtonStatus(bsu)
 		}

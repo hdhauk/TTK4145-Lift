@@ -34,7 +34,6 @@ func (ls *LocalState) UpdateButtonStatus(bsu globalstate.ButtonStatusUpdate) err
 	if ls == nil {
 		return fmt.Errorf("state not instantiated")
 	}
-
 	floor := strconv.Itoa(int(bsu.Floor))
 
 	ls.mu.Lock()
@@ -62,17 +61,17 @@ func (ls *LocalState) GetNextOrder() (floor int, dir string) {
 	oldest := time.Now()
 	floor = -1
 	dir = ""
-	for k, v := range ls.state.HallUpButtons {
-		if v.LastStatus == globalstate.BtnStateUnassigned && v.LastChange.Before(oldest) {
-			oldest = v.LastChange
-			floor, _ = strconv.Atoi(k)
+	for floorStr, s := range ls.state.HallUpButtons {
+		if s.LastStatus == globalstate.BtnStateUnassigned && s.LastChange.Before(oldest) {
+			oldest = s.LastChange
+			floor, _ = strconv.Atoi(floorStr)
 			dir = up
 		}
 	}
-	for k, v := range ls.state.HallDownButtons {
-		if v.LastStatus == globalstate.BtnStateUnassigned && v.LastChange.Before(oldest) {
-			oldest = v.LastChange
-			floor, _ = strconv.Atoi(k)
+	for floorStr, s := range ls.state.HallDownButtons {
+		if s.LastStatus == globalstate.BtnStateUnassigned && s.LastChange.Before(oldest) {
+			oldest = s.LastChange
+			floor, _ = strconv.Atoi(floorStr)
 			dir = down
 		}
 	}
@@ -85,29 +84,29 @@ func (ls *LocalState) GetAllShareworthyUpdates() []globalstate.ButtonStatusUpdat
 	ls.mu.Lock()
 	defer ls.mu.Unlock()
 
-	var ret = []globalstate.ButtonStatusUpdate{}
+	var share = []globalstate.ButtonStatusUpdate{}
 
-	for k, v := range ls.state.HallUpButtons {
-		if v.LastStatus != globalstate.BtnStateDone {
-			floor, _ := strconv.Atoi(k)
+	for floorStr, s := range ls.state.HallUpButtons {
+		if s.LastStatus != globalstate.BtnStateDone {
+			floor, _ := strconv.Atoi(floorStr)
 			bsu := globalstate.ButtonStatusUpdate{
 				Floor:  uint(floor),
 				Dir:    up,
 				Status: globalstate.BtnStateUnassigned,
 			}
-			ret = append(ret, bsu)
+			share = append(share, bsu)
 		}
 	}
-	for k, v := range ls.state.HallDownButtons {
-		if v.LastStatus != globalstate.BtnStateDone {
-			floor, _ := strconv.Atoi(k)
+	for floorStr, s := range ls.state.HallDownButtons {
+		if s.LastStatus != globalstate.BtnStateDone {
+			floor, _ := strconv.Atoi(floorStr)
 			bsu := globalstate.ButtonStatusUpdate{
 				Floor:  uint(floor),
 				Dir:    down,
 				Status: globalstate.BtnStateUnassigned,
 			}
-			ret = append(ret, bsu)
+			share = append(share, bsu)
 		}
 	}
-	return ret
+	return share
 }

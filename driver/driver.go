@@ -97,3 +97,9 @@ func validateButton(b Btn) error {
 	}
 	return nil
 }
+
+// Stop imidiatly stop the elevator wherever it is and turns all LEDs off.
+func Stop() {
+	driverHandle.setMotorDir(stop)
+	clearAllBtns()
+}
