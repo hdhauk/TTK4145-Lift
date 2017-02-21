@@ -2,7 +2,7 @@ package globalstate
 
 import "testing"
 
-func TestGetUnnasignedOrders(t *testing.T) {
+func Test_GetUnnasignedOrders(t *testing.T) {
 	// Create some test-states
 	testState1 := NewState(4) // No unnassigned
 	testState2 := NewState(4) // Some unnasigned
