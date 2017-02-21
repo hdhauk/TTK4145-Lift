@@ -1,4 +1,5 @@
 # Elevator Cluster
+[![CircleCI](https://circleci.com/bb/halvor_haukvik/ttk4145-elevator.svg?style=svg)](https://circleci.com/bb/halvor_haukvik/ttk4145-elevator)
 
 ## Installation
 
