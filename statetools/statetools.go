@@ -78,9 +78,9 @@ func (ls *LocalState) GetNextOrder() (floor int, dir string) {
 	return
 }
 
-// GetAllShareworthyUpdates dumps all orders in the local state that aren't currently marked
+// GetShareworthyUpdates dumps all orders in the local state that aren't currently marked
 // as done. For conencience they are retuned as an array of button status updates.
-func (ls *LocalState) GetAllShareworthyUpdates() []globalstate.ButtonStatusUpdate {
+func (ls *LocalState) GetShareworthyUpdates() []globalstate.ButtonStatusUpdate {
 	ls.mu.Lock()
 	defer ls.mu.Unlock()
 

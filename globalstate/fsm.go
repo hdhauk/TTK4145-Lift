@@ -69,7 +69,7 @@ func (f *FSM) Init(config Config) error {
 
 	// Join supplied peer.
 	if config.InitalPeer != "" {
-		err := join(config.InitalPeer, rPortStr, config.OwnIP, f.logger)
+		err := joinPeerToRaft(config.InitalPeer, rPortStr, config.OwnIP, f.logger)
 		if err != nil {
 			f.logger.Printf("[ERROR] Unable to join node at %s: %s\n", config.InitalPeer, err.Error())
 			return err
@@ -80,15 +80,15 @@ func (f *FSM) Init(config Config) error {
 	time.Sleep(4 * time.Second)
 
 	// Start workers
-	go f.wrapper.LeaderMonitor(f.UpdateButtonStatus)
+	go f.wrapper.ConsensusOrderAssigner(f.UpdateButtonStatus)
 	go f.wrapper.ConsensusMonitor()
 
 	f.initDone = true
 	return nil
 }
 
-// Close shuts down the FSM in a safe manner.
-func (f *FSM) Close() {
+// Shutdown shuts down the FSM in a safe manner.
+func (f *FSM) Shutdown() {
 	close(f.wrapper.shutdown)
 	f.logger.Println("[INFO] Shutting down raft")
 	future := f.wrapper.raft.Shutdown()
@@ -129,7 +129,7 @@ func validateConfig(c *Config) error {
 	return nil
 }
 
-func join(initialPeer, raftAddr, ownIP string, logger *log.Logger) error {
+func joinPeerToRaft(initialPeer, raftAddr, ownIP string, logger *log.Logger) error {
 	// Marshal join request
 	b, err := json.Marshal(map[string]string{"addr": raftAddr})
 	if err != nil {

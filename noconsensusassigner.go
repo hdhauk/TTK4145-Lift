@@ -23,7 +23,7 @@ func noConsensusAssigner() {
 		}
 
 		// Assign orders from local state.
-		floor, dir := ls.GetNextOrder()
+		floor, dir := stateLocal.GetNextOrder()
 		bsu := globalstate.ButtonStatusUpdate{
 			Floor:  uint(floor),
 			Dir:    dir,
@@ -31,10 +31,10 @@ func noConsensusAssigner() {
 		}
 		if dir == "up" {
 			goToCh <- driver.Btn{Floor: floor, Type: driver.HallUp}
-			ls.UpdateButtonStatus(bsu)
+			stateLocal.UpdateButtonStatus(bsu)
 		} else if dir == "down" {
 			goToCh <- driver.Btn{Floor: floor, Type: driver.HallDown}
-			ls.UpdateButtonStatus(bsu)
+			stateLocal.UpdateButtonStatus(bsu)
 		}
 
 	}

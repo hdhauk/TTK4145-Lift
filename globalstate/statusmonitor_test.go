@@ -43,8 +43,8 @@ func Test_LoosingConsensus(t *testing.T) {
 	raft3 := FSM{}
 	raft3.Init(config3)
 	time.Sleep(3 * time.Second)
-	raft2.Close()
-	raft3.Close()
+	raft2.Shutdown()
+	raft3.Shutdown()
 
 	select {
 	case <-consensusLost:

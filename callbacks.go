@@ -12,7 +12,6 @@ import (
 // Globalstate callbacks
 // =============================================================================
 func onIncomingCommand(f int, dir string) {
-	mainlogger.Println("Incomming command")
 	switch dir {
 	case "up":
 		goToCh <- driver.Btn{Floor: f, Type: driver.HallUp}
@@ -31,12 +30,12 @@ func onAquiredConsensus() {
 
 	// Send share all unhandled orders
 	failed := 0
-	buttonUpdates := ls.GetAllShareworthyUpdates()
+	buttonUpdates := stateLocal.GetShareworthyUpdates()
 	for _, bsu := range buttonUpdates {
-		err := gs.UpdateButtonStatus(bsu)
+		err := stateGlobal.UpdateButtonStatus(bsu)
 		if err != nil {
 			mainlogger.Printf("[INFO] Unable to send button update to network. Storing locally.\n")
-			if err := ls.UpdateButtonStatus(bsu); err != nil {
+			if err := stateLocal.UpdateButtonStatus(bsu); err != nil {
 				mainlogger.Printf("[ERROR] Unable to handle button press: %v", err.Error())
 				failed++
 				continue
@@ -63,10 +62,10 @@ func onBtnPress(b driver.Btn) {
 			Dir:    b.Type.String(),
 			Status: globalstate.BtnStateUnassigned,
 		}
-		err := gs.UpdateButtonStatus(bsu)
+		err := stateGlobal.UpdateButtonStatus(bsu)
 		if err != nil {
 			mainlogger.Printf("[INFO] Unable to send button update to network. Storing locally.\n")
-			if err := ls.UpdateButtonStatus(bsu); err != nil {
+			if err := stateLocal.UpdateButtonStatus(bsu); err != nil {
 				mainlogger.Printf("[ERROR] Unable to handle button press: %v", err.Error())
 				return
 			}
@@ -80,7 +79,7 @@ func onBtnPress(b driver.Btn) {
 
 func onNewStatus(f int, dir string, dstFloor int, dstDir string) {
 	// Check if there are anyone to pick up.
-	state, _ := gs.GetState()
+	state, _ := stateGlobal.GetState()
 	if statetools.ShouldStopAndPickup(state, f, dir) {
 		driver.StopForPickup(f, dir)
 		mainlogger.Printf("[INFO] Pickup was available in Floor=%d Dir=%s. Stopping!\n", f, dir)
@@ -93,7 +92,7 @@ func onNewStatus(f int, dir string, dstFloor int, dstDir string) {
 		DstFloor:     uint(dstFloor),
 		DstBtnDir:    dstDir,
 	}
-	if err := gs.UpdateLiftStatus(lsu); err != nil {
+	if err := stateGlobal.UpdateLiftStatus(lsu); err != nil {
 		mainlogger.Println("[WARN] Failed to send liftupdate.")
 	}
 
@@ -105,8 +104,8 @@ func onDstReached(b driver.Btn, pickup bool) {
 		Dir:    b.Type.String(),
 		Status: globalstate.BtnStateDone,
 	}
-	if err := gs.UpdateButtonStatus(bsu); err != nil {
-		if err := ls.UpdateButtonStatus(bsu); err != nil {
+	if err := stateGlobal.UpdateButtonStatus(bsu); err != nil {
+		if err := stateLocal.UpdateButtonStatus(bsu); err != nil {
 			mainlogger.Printf("[ERROR] Unable to handle button press: %v", err.Error())
 			return
 		}

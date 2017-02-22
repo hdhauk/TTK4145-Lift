@@ -14,7 +14,7 @@ import (
 	"github.com/hashicorp/raft"
 )
 
-func (rw *raftwrapper) LeaderMonitor(updateBtnStatus func(bs ButtonStatusUpdate) error) {
+func (rw *raftwrapper) ConsensusOrderAssigner(updateBtnStatus func(bs ButtonStatusUpdate) error) {
 	// Set intervals. Timeout determined linearly based on number of floors.
 	scanInterval := 500 * time.Millisecond
 	orderTimeout := time.Duration(3*rw.config.Floors) * time.Second

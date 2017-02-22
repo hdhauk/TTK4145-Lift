@@ -21,13 +21,12 @@ var simPort string
 var floors int
 
 // Pick ports randomly
-var r = 1024 + rand.Intn(64510)
-var raftPort = r
+var raftPort = 1024 + rand.Intn(64510)
 
 // Both the global and local state are threadsafe and for convenience thus
 // available to the whole main package.
-var gs globalstate.FSM
-var ls *statetools.LocalState
+var stateGlobal globalstate.FSM
+var stateLocal *statetools.LocalState
 
 // Set up looging. All packages have their own logger with prefix: [package name]
 var mainlogger = log.New(os.Stderr, "[main] ", log.Ltime|log.Lshortfile)
@@ -107,19 +106,19 @@ func main() {
 			break
 		}
 	}
-	gs = globalstate.FSM{}
-	err = gs.Init(globalstateConfig)
+	stateGlobal = globalstate.FSM{}
+	err = stateGlobal.Init(globalstateConfig)
 	if err != nil {
 		mainlogger.Printf("[ERROR] Failed to initalize globalstore: %s", err.Error())
 	}
 
 	// Set up local state in case network connection is lost.
-	ls = statetools.NewLocalState()
+	stateLocal = statetools.NewLocalState()
 
 	// Start workers for coordination
-	go syncBtnLEDs(gs)       // Only active when consensus is achieved.
-	go orderQueuer()         // Always active.
-	go noConsensusAssigner() // Only active when consensus is missing.
+	go syncBtnLEDs(stateGlobal) // Only active when consensus is achieved.
+	go orderQueuer()            // Always active.
+	go noConsensusAssigner()    // Only active when consensus is missing.
 
 	// Capture Ctrl+C in order to stop the lift if it is moving.
 	c := make(chan os.Signal, 1)
