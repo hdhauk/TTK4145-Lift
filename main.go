@@ -32,9 +32,8 @@ var stateLocal *statetools.LocalState
 var mainlogger = log.New(os.Stderr, "[main] ", log.Ltime|log.Lshortfile)
 
 // Set up internal communication in package main.
-//All communication with other packages are done through callbacks.
+// All communication with other packages are done through callbacks.
 var goToCh = make(chan driver.Btn, 9)
-var goToFromInsideCh = make(chan driver.Btn, 9)
 var orderDoneCh = make(chan interface{})
 var haveConsensusBtnSyncCh = make(chan bool)
 var haveConsensusAssignerCh = make(chan bool)

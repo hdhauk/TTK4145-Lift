@@ -70,8 +70,6 @@ func onBtnPress(b driver.Btn) {
 				return
 			}
 		}
-	} else {
-		goToFromInsideCh <- b
 	}
 
 	driver.BtnLEDSet(b)

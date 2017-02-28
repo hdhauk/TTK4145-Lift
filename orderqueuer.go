@@ -25,34 +25,19 @@ func (bq *btnQueue) IsEmpty() bool {
 
 func orderQueuer() {
 	outsideQueue := btnQueue{}
-	insideQueue := btnQueue{}
 	ready := true
-	insideTimeout := time.Now()
 
 	for {
 		select {
 		// Listen for incomming orders
 		case dst := <-goToCh:
 			outsideQueue.Queue(dst)
-		case dst := <-goToFromInsideCh:
-			insideQueue.Queue(dst)
-
 		// Listen for message that the last destination is reached.
 		case <-orderDoneCh:
 			ready = true
-			insideTimeout = time.Now()
 		case <-time.After(100 * time.Millisecond):
 		}
-
-		if !insideQueue.IsEmpty() && ready {
-			dst := insideQueue.Dequeue()
-			driver.GoToFloor(dst.Floor, "")
-			ready = false
-		} else if ready &&
-			!outsideQueue.IsEmpty() &&
-			// Give people inside priority if they press within 3 sec.
-			time.Since(insideTimeout) > 3*time.Second {
-
+		if !outsideQueue.IsEmpty() && ready {
 			dst := outsideQueue.Dequeue()
 			driver.GoToFloor(dst.Floor, dst.Type.String())
 			ready = false
