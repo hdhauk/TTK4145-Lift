@@ -84,6 +84,9 @@ func onNewStatus(f int, dir string, dstFloor int, dstDir string) {
 	}
 
 	// Send status update
+	if dstFloor < 0 {
+		dstFloor = dstFloor * -1
+	}
 	lsu := globalstate.LiftStatusUpdate{
 		CurrentFloor: uint(f),
 		CurrentDir:   dir,

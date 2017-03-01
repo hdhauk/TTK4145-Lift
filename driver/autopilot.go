@@ -125,6 +125,11 @@ func autoPilot(apFloorCh <-chan int, driverInitDone chan error) {
 			// Priority 3: Have an outside destination to handle
 		} else if currentOutsideDst.floor != -1 {
 			currentDir = dirToDst(lastFloor, currentOutsideDst.floor)
+			if currentDir == stop {
+				go cfg.OnDstReached(newBtn(currentOutsideDst.floor, currentOutsideDst.dir), false)
+				currentOutsideDst = dst{-1, ""}
+				stopAndOpenDoor()
+			}
 
 			// Priority 4: Nothing to do
 		} else {
