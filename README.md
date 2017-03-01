@@ -1,5 +1,15 @@
-# Elevator Cluster
+
+# TTK4145-Lift
+A distributed lift controller created as a project assignment in TTK4145 Real-Time Programming.
+
 [![Build Status](https://travis-ci.com/hdhauk/TTK4145-Lift.svg?token=y9hAjhVWRxqextVgHFNt&branch=master)](https://travis-ci.com/hdhauk/TTK4145-Lift)
+
+## Highlights
+ - Communication based on the Raft consensus algorithm.
+ - Can handle loss of up to half of available nodes without degraded functionality.
+ - Support both lift-hardware and simulators
+ - `godoc` compliant
+
 ## Installation
 
 ### Requirements
