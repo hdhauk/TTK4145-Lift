@@ -1,7 +1,10 @@
 language: go
 go: 1.8
 sudo: required
-install: ./install-dependencies.sh
+install:
+  - ./install-dependencies.sh
+  - go get github.com/hashicorp/raft
+  - go get github.com/stretchr/testify
 script:
   - go test -v ./globalstate
   - go test -v ./statetools
