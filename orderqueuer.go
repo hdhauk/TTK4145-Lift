@@ -3,7 +3,7 @@ package main
 import (
 	"time"
 
-	"bitbucket.org/halvor_haukvik/ttk4145-elevator/driver"
+	"github.com/hdhauk/TTK4145-Lift/driver"
 )
 
 type btnQueue struct {

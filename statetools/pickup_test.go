@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"bitbucket.org/halvor_haukvik/ttk4145-elevator/globalstate"
+	"github.com/hdhauk/TTK4145-Lift/globalstate"
 )
 
 func TestPickup(t *testing.T) {

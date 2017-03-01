@@ -3,8 +3,8 @@ package main
 import (
 	"time"
 
-	"bitbucket.org/halvor_haukvik/ttk4145-elevator/driver"
-	"bitbucket.org/halvor_haukvik/ttk4145-elevator/globalstate"
+	"github.com/hdhauk/TTK4145-Lift/driver"
+	"github.com/hdhauk/TTK4145-Lift/globalstate"
 )
 
 func noConsensusAssigner() {

@@ -1,5 +1,4 @@
 # Elevator Cluster
-[![CircleCI](https://circleci.com/bb/halvor_haukvik/ttk4145-elevator.svg?style=svg)](https://circleci.com/bb/halvor_haukvik/ttk4145-elevator)
 
 ## Installation
 
@@ -20,9 +19,9 @@ The simulator does not work properly in MacOS.
 ~~~~
   $GOPATH/
     ↳ src/
-      ↳ bitbucket.org/
-        ↳ halvor_haukvik/
-          ↳ ttk4145-elevator/
+      ↳ github.com/
+        ↳ hdhauk/
+          ↳ TTK4145-Lift/
 ~~~~
 
 ### 1 .Install Comedi drivers
@@ -38,7 +37,7 @@ sudo make install
 The project utilize Hashicorps Raft library.
 To download all necessary dependencies open a terminal window in the project folder and run
 ~~~~
-cd $GOPATH/src/bitbucket.org/halvor_haukvik/ttk4145-elevator
+cd $GOPATH/src/github.com/hdhauk/TTK4145-Lift
 go get -t ./..
 ~~~~
 or install it directly using
@@ -55,7 +54,7 @@ sudo apt-get install xdotool
 
 ### 4. Build the project
 ~~~~
-cd $GOPATH/src/bitbucket.org/halvor_haukvik/ttk4145-elevator
+cd $GOPATH/src/github.com/hdhauk/TTK4145-Lift
 go build .
 ~~~~
 
@@ -63,11 +62,11 @@ go build .
 
 If you are intending to run in simulator mode first start the simulator on the local host:
 ~~~~
-cd $GOPATH/src/bitbucket.org/halvor_haukvik/ttk4145-elevator/driver/simulators/simulator1-53566
+cd $GOPATH/src/github.com/hdhauk/TTK4145-Lift/driver/simulators/simulator1-53566
 rdmd sim_server.d
 ~~~~
 
-Run the project with the command `./ttk4145-elevator`.
+Run the project with the command `./TTK4145-Lift`.
 The following options are available
 
 |Argument  |Additional variable    | Description|
@@ -78,4 +77,4 @@ The following options are available
 |`-floors`|number of floors| Used to provide a custom number of floors. Default is 4|
 
 
-Example: `./ttk4145-elevator -nick MyElevator -sim 53566 -raft 8000 - floors 9`
+Example: `./TTK4145-Lift -nick MyElevator -sim 53566 -raft 8000 - floors 9`
