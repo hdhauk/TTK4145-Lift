@@ -1,6 +1,8 @@
 package driver
 
-import "time"
+import (
+	"time"
+)
 
 func btnPressHandler(btnPressCh <-chan Btn) {
 	// Initalize button registers
@@ -29,6 +31,7 @@ func btnPressHandler(btnPressCh <-chan Btn) {
 			case Cab:
 				if time.Since(CabBtns[btn.Floor]) > cbTriggerInterval {
 					cfg.OnBtnPress(btn)
+					insideBtnPressCh <- btn
 					CabBtns[btn.Floor] = time.Now()
 				}
 			}
