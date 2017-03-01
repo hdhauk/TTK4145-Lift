@@ -1,5 +1,5 @@
 # Elevator Cluster
-
+[![Build Status](https://travis-ci.com/hdhauk/TTK4145-Lift.svg?token=y9hAjhVWRxqextVgHFNt&branch=master)](https://travis-ci.com/hdhauk/TTK4145-Lift)
 ## Installation
 
 ### Requirements
