@@ -45,7 +45,7 @@ func Init(c Config, done chan error) {
 	// Initialize channels
 	liftConnDoneCh = make(chan bool)
 	btnPressCh = make(chan Btn, c.Floors)
-	insideBtnPressCh = make(chan Btn)
+	insideBtnPressCh = make(chan Btn, c.Floors)
 	floorDetectCh = make(chan int, c.Floors)
 	stopForPickupCh = make(chan dst)
 	apFloorCh = make(chan int)

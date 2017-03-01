@@ -1,6 +1,7 @@
 package driver
 
 import (
+	"fmt"
 	"time"
 )
 
@@ -30,13 +31,13 @@ func autoPilot(apFloorCh <-chan int, driverInitDone chan error) {
 	select {
 	case f := <-apFloorCh:
 		lastFloor = f
-		currentOutsideDst = dst{floor: f, dir: ""}
+		currentOutsideDst = dst{floor: -1, dir: ""}
 	case <-time.After(1 * time.Second):
 		driverHandle.setMotorDir(up)
 		lastFloor = <-apFloorCh
 		driverHandle.setMotorDir(stop)
 		currentDir = stop
-		currentOutsideDst.floor = lastFloor
+		currentOutsideDst = dst{floor: -1, dir: ""}
 	}
 	cfg.Logger.Printf("[INFO] Ready with lift stationary in floor: %v\n", lastFloor)
 	close(driverInitDone)
@@ -55,7 +56,8 @@ func autoPilot(apFloorCh <-chan int, driverInitDone chan error) {
 					go cfg.OnDstReached(newBtn(lastFloor, currentOutsideDst.dir), false)
 					currentOutsideDst = dst{-1, ""}
 				}
-				openDoor()
+				stopAndOpenDoor()
+
 			} else if insideBtns[lastFloor] {
 				insideBtns[lastFloor] = false
 				driverHandle.setBtnLED(Btn{lastFloor, Cab}, false)
@@ -65,11 +67,12 @@ func autoPilot(apFloorCh <-chan int, driverInitDone chan error) {
 					go cfg.OnDstReached(newBtn(lastFloor, currentOutsideDst.dir), false)
 					currentOutsideDst = dst{-1, ""}
 				}
-				openDoor()
+				stopAndOpenDoor()
+
 			} else if currentOutsideDst.floor == lastFloor {
 				go cfg.OnDstReached(newBtn(lastFloor, currentOutsideDst.dir), false)
 				currentOutsideDst = dst{-1, ""}
-				openDoor()
+				stopAndOpenDoor()
 			}
 
 		case d := <-floorDstCh:
@@ -93,7 +96,7 @@ func autoPilot(apFloorCh <-chan int, driverInitDone chan error) {
 				driverHandle.setBtnLED(Btn{f, Cab}, false)
 				insideBtns[f] = false
 			}
-			openDoor()
+			stopAndOpenDoor()
 			driverHandle.setMotorDir(currentDir)
 
 		case b := <-insideBtnPressCh:
@@ -108,24 +111,27 @@ func autoPilot(apFloorCh <-chan int, driverInitDone chan error) {
 			currentDir = dirToDst(lastFloor, currentInsideDst)
 			if currentDir == stop {
 				currentInsideDst = -1
+				insideBtns[lastFloor] = false
 				driverHandle.setBtnLED(Btn{lastFloor, Cab}, false)
-				openDoor()
+				stopAndOpenDoor()
 			}
+
 		} else if f := getFurthestAway(insideBtns, lastFloor); f != -1 {
 			currentInsideDst = f
 			currentDir = dirToDst(lastFloor, f)
 		} else if currentOutsideDst.floor != -1 {
 			currentDir = dirToDst(lastFloor, currentOutsideDst.floor)
-			// If the door should open here
-			if currentDir == stop {
-				go cfg.OnDstReached(newBtn(currentOutsideDst.floor, currentOutsideDst.dir), false)
-				currentOutsideDst = dst{-1, ""}
-				openDoor()
-			}
 		} else {
 			currentDir = stop
 		}
+
+		// Make sure we're not stopping outside a floor
+		if atFloor, _ := driverHandle.readFloor(); currentDir == stop && !atFloor {
+			cfg.Logger.Println(yellow + "[WARN] Cannot stop outside a floor. Going up to a well defined floor." + white)
+			currentDir = up
+		}
 		driverHandle.setMotorDir(currentDir)
+		go cfg.OnNewStatus(lastFloor, currentDir, currentOutsideDst.floor, currentOutsideDst.dir)
 	}
 }
 
@@ -162,10 +168,16 @@ func dirToDst(lastFloor, dst int) string {
 	return stop
 }
 
-func openDoor() {
+func stopAndOpenDoor() error {
+	if atFloor, _ := driverHandle.readFloor(); !atFloor {
+		cfg.Logger.Printf(yellow + "[WARN] Cannot open door between floors." + white)
+		return fmt.Errorf("cannot stop and open door between floors")
+	}
+	driverHandle.setMotorDir(stop)
 	driverHandle.setDoorLED(true)
 	time.Sleep(3 * time.Second)
 	driverHandle.setDoorLED(false)
+	return nil
 }
 
 func newBtn(f int, dir string) Btn {
