@@ -105,8 +105,9 @@ func autoPilot(apFloorCh <-chan int, driverInitDone chan error) {
 			go cfg.OnNewStatus(lastFloor, currentDir, currentOutsideDst.floor, currentOutsideDst.dir)
 
 		}
+		// Determine what to do next:
 
-		// Determine what to do next
+		// Priority 1: Already have an inside destination
 		if currentInsideDst != -1 {
 			currentDir = dirToDst(lastFloor, currentInsideDst)
 			if currentDir == stop {
@@ -116,11 +117,16 @@ func autoPilot(apFloorCh <-chan int, driverInitDone chan error) {
 				stopAndOpenDoor()
 			}
 
+			// Priority 2: Don't have an inside destination, but can choose a new one
 		} else if f := getFurthestAway(insideBtns, lastFloor); f != -1 {
 			currentInsideDst = f
 			currentDir = dirToDst(lastFloor, f)
+
+			// Priority 3: Have an outside destination to handle
 		} else if currentOutsideDst.floor != -1 {
 			currentDir = dirToDst(lastFloor, currentOutsideDst.floor)
+
+			// Priority 4: Nothing to do
 		} else {
 			currentDir = stop
 		}
