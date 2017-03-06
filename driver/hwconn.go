@@ -3,13 +3,13 @@ package driver
 // Lift functions
 //==============================================================================
 func initHW(port string) {
-	// Initalize connection to lift
+	// Initialize connection to lift
 	if ioInit() != nil {
-		cfg.Logger.Fatalln("Failed to connect to the elvator. Make sure everything is turned on and try again!")
+		cfg.Logger.Fatalln("[ERROR] Failed to connect to the elvator. Make sure everything is turned on and try again!")
 	}
 	clearAllBtns()
 	close(liftConnDoneCh)
-	cfg.Logger.Println("hardware initalization complete")
+	cfg.Logger.Println("[INFO] Hardware initialization complete")
 }
 
 func setMotorDirHW(dir string) {
@@ -38,7 +38,7 @@ func setBtnLEDHW(btn Btn, active bool) {
 func setFloorLEDHW(floor int) {
 	// Check input validity
 	if floor < 0 || floor >= numFloors {
-		cfg.Logger.Printf("Error: Floor %d out of range! No floor indicator will be set.\n", floor)
+		cfg.Logger.Printf("[Error] Floor %d out of range! No floor indicator will be set.\n", floor)
 	}
 
 	// Binary encoding. One light must always be on.

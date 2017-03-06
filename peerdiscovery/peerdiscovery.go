@@ -70,7 +70,7 @@ func broadcastHeartBeats(c Config) {
 // Start initiate listening for other peers while also start broadcasting
 // to others. The `id`-field in the callbacks have the form:
 //	"nick"@"ip-address":"raft-port"
-// where the latter part is the IPv4 adress of the peer.
+// where the latter part is the IPv4 address of the peer.
 func Start(c Config) {
 	// Set up storage for peers we discover
 	peers := make(map[string]*Peer)

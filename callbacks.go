@@ -43,7 +43,7 @@ func onAquiredConsensus() {
 
 		}
 	}
-	mainlogger.Printf("[INFO] Aquired consensus.\n")
+	mainlogger.Printf("[INFO] Acquired consensus.\n")
 	mainlogger.Printf("[INFO] Shared relevant button statuses with peers, %d in total. %d failed.\n", len(buttonUpdates), failed)
 }
 

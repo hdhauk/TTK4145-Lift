@@ -51,7 +51,7 @@ func autoPilot(apFloorCh <-chan int, driverInitDone chan error) {
 				driverHandle.setBtnLED(Btn{lastFloor, Cab}, false)
 				currentInsideDst = -1
 
-				// Check if happend to also be the outside destination
+				// Check if happened to also be the outside destination
 				if currentOutsideDst.floor == lastFloor {
 					go cfg.OnDstReached(newBtn(lastFloor, currentOutsideDst.dir), false)
 					currentOutsideDst = dst{-1, ""}
@@ -62,7 +62,7 @@ func autoPilot(apFloorCh <-chan int, driverInitDone chan error) {
 				insideBtns[lastFloor] = false
 				driverHandle.setBtnLED(Btn{lastFloor, Cab}, false)
 
-				// Check if happend to also be the outside destination
+				// Check if happened to also be the outside destination
 				if currentOutsideDst.floor == lastFloor {
 					go cfg.OnDstReached(newBtn(lastFloor, currentOutsideDst.dir), false)
 					currentOutsideDst = dst{-1, ""}

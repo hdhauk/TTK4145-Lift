@@ -21,7 +21,7 @@ func Test_InitSingleFSM(t *testing.T) {
 	}
 	raft1 := FSM{}
 	if err := raft1.Init(config1); err != nil {
-		t.Errorf("failed to initalize FSM")
+		t.Errorf("failed to initialize FSM")
 	}
 
 	res := <-consensus

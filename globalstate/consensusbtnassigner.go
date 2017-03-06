@@ -22,7 +22,7 @@ func (rw *raftwrapper) ConsensusOrderAssigner(updateBtnStatus func(bs ButtonStat
 	leaderCh := rw.raft.LeaderCh()
 	isLeader := rw.raft.State() == raft.Leader
 
-	// Check inital role and invoke corresponding callback
+	// Check initial role and invoke corresponding callback
 	if isLeader {
 		rw.config.OnPromotion()
 	} else {

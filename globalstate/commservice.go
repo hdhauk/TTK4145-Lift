@@ -184,7 +184,7 @@ func (s *commService) HandleLiftUpdate(w http.ResponseWriter, r *http.Request) {
 func (s *commService) HandleButtonUpdate(w http.ResponseWriter, r *http.Request) {
 	// Check for empty reqest
 	if r.Body == nil {
-		s.logger.Printf("[WARN] Recieved empty button status update.\n")
+		s.logger.Printf("[WARN] Received empty button status update.\n")
 		http.Error(w, "No request body provided", http.StatusBadRequest)
 		return
 	}

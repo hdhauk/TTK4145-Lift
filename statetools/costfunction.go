@@ -7,12 +7,12 @@ import (
 	"github.com/hdhauk/TTK4145-Lift/globalstate"
 )
 
-// CostFunction sdasda
+// CostFunction calculates the best elevator to handle a given order based on the provided state.
 func CostFunction(s globalstate.State, floor int, dir string) string {
 	lifts := s.Nodes
 	costs := make(map[string]int)
 
-	// Caluclate cost for all lift
+	// Calculate cost for all lift
 	for _, lift := range lifts {
 		costs[lift.ID] = calculateCost(lift, uint(floor), dir, s)
 	}

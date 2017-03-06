@@ -33,7 +33,7 @@ type Config struct {
 	// If left blank the FSM instansiate a brand new raft and elect itself leader.
 	InitalPeer string
 
-	// OwnIP may be manually be set. If not supplied it will be infered by the package if needed.
+	// OwnIP may be manually be set. If not supplied it will be inferred by the package if needed.
 	OwnIP string
 
 	// Number of floors on the lifts in the cluster. Only used for calculating timouts.
@@ -84,7 +84,7 @@ type ButtonStatusUpdate struct {
 // UpdateLiftStatus updates the globalstate with the provided liftStatus.
 func (f *FSM) UpdateLiftStatus(ls LiftStatusUpdate) error {
 	if !f.initDone {
-		return fmt.Errorf("globalstate not yet initalized")
+		return fmt.Errorf("globalstate not yet initialized")
 	}
 	// Convert to liftStatus
 	status := LiftStatus{
@@ -117,7 +117,7 @@ func (f *FSM) UpdateLiftStatus(ls LiftStatusUpdate) error {
 // If unable to reach the raft-leader it will return an error.
 func (f *FSM) UpdateButtonStatus(bs ButtonStatusUpdate) error {
 	if !f.initDone {
-		return fmt.Errorf("globalstate not yet initalized")
+		return fmt.Errorf("globalstate not yet initialized")
 	}
 	// Marshal for sending as json
 	b := new(bytes.Buffer)
@@ -147,7 +147,7 @@ func (f *FSM) UpdateButtonStatus(bs ButtonStatusUpdate) error {
 // GetState returns a copy of the current cluster state.
 func (f *FSM) GetState() (State, error) {
 	if !f.initDone {
-		return State{}, fmt.Errorf("globalstate not yet initalized")
+		return State{}, fmt.Errorf("globalstate not yet initialized")
 	}
 	return f.wrapper.GetState(), nil
 }

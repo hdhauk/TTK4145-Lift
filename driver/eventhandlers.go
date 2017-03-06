@@ -5,7 +5,7 @@ import (
 )
 
 func btnPressHandler(btnPressCh <-chan Btn) {
-	// Initalize button registers
+	// Initialize button registers
 	hallUpBtns := make(map[int]time.Time)
 	hallDownBtns := make(map[int]time.Time)
 	CabBtns := make(map[int]time.Time)
@@ -40,7 +40,7 @@ func btnPressHandler(btnPressCh <-chan Btn) {
 }
 
 func floorDetectHandler(floorDetectCh <-chan int, apFloor chan<- int) {
-	// Initalization
+	// Initialization
 	beenDriving := true
 	setBeenDriving := func(b bool) {
 		beenDriving = b

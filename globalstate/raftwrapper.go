@@ -105,7 +105,7 @@ func (rw *raftwrapper) Start(enableSingle bool) error {
 		return fmt.Errorf("new raft: %s", err)
 	}
 	rw.raft = ra
-	rw.logger.Println("[INFO] Successfully initalized Raft")
+	rw.logger.Println("[INFO] Successfully initialized Raft")
 	return nil
 }
 

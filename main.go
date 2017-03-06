@@ -80,11 +80,11 @@ func main() {
 	go driver.Init(driverConfig, driverInitDone)
 	err := <-driverInitDone
 	if err != nil {
-		mainlogger.Fatalf("[ERROR] Failed to initalize driver: %v", err)
+		mainlogger.Fatalf("[ERROR] Failed to initialize driver: %v", err)
 	}
 	mainlogger.Println("[INFO] Driver successfully initialized")
 
-	// Initalize globalstate
+	// Initialize globalstate
 	ip, _ := peerdiscovery.GetLocalIP()
 	globalstateConfig := globalstate.Config{
 		RaftPort:           raftPort,
@@ -108,7 +108,7 @@ func main() {
 	stateGlobal = globalstate.FSM{}
 	err = stateGlobal.Init(globalstateConfig)
 	if err != nil {
-		mainlogger.Printf("[ERROR] Failed to initalize globalstore: %s", err.Error())
+		mainlogger.Printf("[ERROR] Failed to initialize globalstore: %s", err.Error())
 	}
 
 	// Set up local state in case network connection is lost.
