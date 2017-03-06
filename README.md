@@ -19,11 +19,11 @@ A distributed lift controller created as a project assignment in TTK4145 Real-Ti
 
 Only tested on these versions, but will likely work unless you have any ancient versions
 
-Not tested on Windows, but the comedi driver will likely be hard to get working.
+Not tested on Windows, but the Comedi driver will likely be hard to get working.
 The simulator does not work properly in MacOS.
 
 ### Prerequisites
-* Make sure your Go enviroment is correctly set up:
+* Make sure your Go environment is correctly set up:
 
   The location of the project should look something like this:
 ~~~~
