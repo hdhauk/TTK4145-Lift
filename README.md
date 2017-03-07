@@ -10,6 +10,12 @@ A distributed lift controller created as a project assignment in TTK4145 Real-Ti
  - Support both lift-hardware and simulators
  - `godoc` compliant
 
+## Raft algorithm
+For a overview over the Raft consensus algorithm see the excellent visualizations at:
+
+- [The Secret Life of Data](http://thesecretlivesofdata.com/raft/)
+- [The Raft Consensus Algorithm](https://raft.github.io/)
+
 ## Installation
 
 ### Requirements
