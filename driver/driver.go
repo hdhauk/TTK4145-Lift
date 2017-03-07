@@ -1,7 +1,7 @@
 /*
 Package driver provides control of both simulated and actual lifts.
-The package also usure that the floor-indicator always show the correct floor,
-and that the carrige always have a closed door unless stationary at a floor.*/
+The package also provide functionality for handeling internal orderes, as well as taking external orders.
+*/
 package driver
 
 import "fmt"
@@ -98,7 +98,7 @@ func validateButton(b Btn) error {
 	return nil
 }
 
-// Stop imidiatly stop the elevator wherever it is and turns all LEDs off.
+// Stop immediately stop the elevator wherever it is and turns all LEDs off.
 func Stop() {
 	driverHandle.setMotorDir(stop)
 	clearAllBtns()

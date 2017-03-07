@@ -15,7 +15,7 @@ const (
 	done = "done"
 )
 
-// LocalState is a threadsafe datastructure identical to the global state.
+// LocalState is a threadsafe data structure almost identical to the global state.
 type LocalState struct {
 	state globalstate.State
 	mu    sync.Mutex
