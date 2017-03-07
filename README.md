@@ -3,6 +3,7 @@
 A distributed lift controller created as a project assignment in TTK4145 Real-Time Programming.
 
 [![Build Status](https://travis-ci.com/hdhauk/TTK4145-Lift.svg?token=y9hAjhVWRxqextVgHFNt&branch=master)](https://travis-ci.com/hdhauk/TTK4145-Lift)
+[![Go Report Card](https://goreportcard.com/badge/github.com/hdhauk/TTK4145-Lift)](https://goreportcard.com/report/github.com/hdhauk/TTK4145-Lift)
 
 ## Highlights
  - Communication based on the Raft consensus algorithm.
