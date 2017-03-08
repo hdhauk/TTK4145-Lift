@@ -55,7 +55,7 @@ func (rw *raftwrapper) ConsensusOrderAssigner(updateBtnStatus func(bs ButtonStat
 		state := rw.state.DeepCopy()
 		rw.mu.Unlock()
 
-		// Inspect unnassigned or orders that have timed out
+		// Inspect unassigned or orders that have timed out
 		unassignedBtns := getUnassignedOrders(state)
 		expiredBtns := getTimedOutOrders(state, orderTimeout)
 		var assignees []string
@@ -64,7 +64,6 @@ func (rw *raftwrapper) ConsensusOrderAssigner(updateBtnStatus func(bs ButtonStat
 		for _, b := range expiredBtns {
 			lowestCostPeer := rw.config.CostFunction(state, b.Floor, b.Dir)
 			if lowestCostPeer == "" || stringInSlice(lowestCostPeer, assignees) {
-				// rw.logger.Printf("[WARN] No lifts currently available to handle order: {Floor:%d, Dir:%s}\n", b.Floor, b.Dir)
 				continue
 			}
 			updateToAssigned(b, lowestCostPeer, updateBtnStatus)
@@ -76,7 +75,6 @@ func (rw *raftwrapper) ConsensusOrderAssigner(updateBtnStatus func(bs ButtonStat
 		for _, b := range unassignedBtns {
 			lowestCostPeer := rw.config.CostFunction(state, b.Floor, b.Dir)
 			if lowestCostPeer == "" || stringInSlice(lowestCostPeer, assignees) {
-				// rw.logger.Printf("[WARN] No lifts currently available to handle order: {Floor:%d, Dir:%s}\n", b.Floor, b.Dir)
 				continue
 			}
 			updateToAssigned(b, lowestCostPeer, updateBtnStatus)
@@ -148,7 +146,7 @@ func sendCmd(b btn, dstNode string) error {
 	}
 	addr := fmt.Sprintf("%s:%d", parts[0], raftPort+1)
 
-	// Marhsal to json
+	// Marshal to json
 	buf := new(bytes.Buffer)
 	json.NewEncoder(buf).Encode(b)
 	res, err := http.Post(fmt.Sprintf("http://%s/cmd", addr), "application/json; charset=utf-8", buf)

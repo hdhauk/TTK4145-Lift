@@ -21,7 +21,7 @@ var insideBtnPressCh chan Btn
 var floorDetectCh chan int
 var apFloorCh chan int
 
-// Init intializes the driver, and return an error on the done-channel
+// Init initializes the driver, and return an error on the done-channel
 // if unable to initialize the driver
 func Init(c Config, done chan error) {
 	// Set configuration
@@ -119,7 +119,7 @@ func setConfig(c Config) error {
 	}
 	cfg.SimPort = c.SimPort
 
-	// Set floornumber
+	// Set floor number
 	if c.Floors < 0 {
 		cfg.Logger.Printf("negative number of floors (%v) not supported\n", c.Floors)
 		return fmt.Errorf("negative number of floors (%v) not supported", c.Floors)

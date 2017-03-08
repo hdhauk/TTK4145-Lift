@@ -6,9 +6,9 @@ package driver
 	--> github.com/mortenfyhn/TTK4145-Heis/blob/master/Lift/src/hw/lift.go
 	--> github.com/mortenfyhn/TTK4145-Heis/blob/master/Lift/src/hw/io.go
 
-	It is however refactored to comply with the Go guidelines for best practices,
-	especially with respect to naming convetions, and some functions are modified
-	to be more compatable with the rest of the driver package.
+	It is however re-factored to comply with the Go guidelines for best practices,
+	especially with respect to naming conventions, and some functions are modified
+	to be more compatible with the rest of the driver package.
 */
 
 /*

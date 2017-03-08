@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-// commService provides HTTP commService for admitting new peers and command messages.
+// commService provides HTTP communication services for admitting new peers and command messages.
 type commService struct {
 	addr       string
 	leaderAddr string
@@ -43,7 +43,7 @@ func (s *commService) Start() error {
 	// Handle request to the root
 	http.ListenAndServe(s.addr, s)
 
-	// Start accepting incomming connections on the listener
+	// Start accepting incoming connections on the listener
 	go func() {
 		err := server.Serve(s.ln)
 		if err != nil {
@@ -59,7 +59,7 @@ func (s *commService) Close() {
 	return
 }
 
-// ServeHTTP defines the behaviour when receiving a request
+// ServeHTTP defines the behavior when receiving a request
 func (s *commService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	p := r.URL.Path
 	// Mux different endpoints
@@ -67,13 +67,13 @@ func (s *commService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// Join requests
 		s.HandleJoin(w, r)
 	} else if strings.HasPrefix(p, "/update/lift") {
-		// Incomming lift status updates
+		// Incoming lift status updates
 		s.HandleLiftUpdate(w, r)
 	} else if strings.HasPrefix(p, "/update/button") {
-		// Incomming button status updates
+		// Incoming button status updates
 		s.HandleButtonUpdate(w, r)
 	} else if strings.HasPrefix(p, "/cmd") {
-		// Incomming commands/assignments from leader
+		// Incoming commands/assignments from leader
 		s.HandleCmd(w, r)
 	} else if strings.HasPrefix(p, "/debug/dump-state") {
 		// For debugging purposes
@@ -89,7 +89,7 @@ func (s *commService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (s *commService) HandleJoin(w http.ResponseWriter, r *http.Request) {
 	// Redirect if not currently leader
 	if s.store.GetStatus() != 2 {
-		// Infer commport from the raft-port. The communication port should always
+		// Infer commPort from the raft-port. The communication port should always
 		// be one above the raft port.
 		leader := s.store.GetLeader()
 		if leader == "" {
@@ -101,7 +101,7 @@ func (s *commService) HandleJoin(w http.ResponseWriter, r *http.Request) {
 		raftPortInt, _ := strconv.Atoi(parts[1])
 		portStr := strconv.Itoa(raftPortInt + 1)
 
-		// Return leader address to requestor
+		// Return leader address to requester
 		w.Header().Add("X-Raft-Leader", parts[0]+":"+portStr)
 		return
 	}
@@ -139,7 +139,7 @@ func (s *commService) HandleJoin(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *commService) HandleCmd(w http.ResponseWriter, r *http.Request) {
-	// Check for empty reqest
+	// Check for empty request
 	if r.Body == nil {
 		http.Error(w, "No request body provided", http.StatusBadRequest)
 		return
@@ -161,7 +161,7 @@ func (s *commService) HandleCmd(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *commService) HandleLiftUpdate(w http.ResponseWriter, r *http.Request) {
-	// Check for empty reqest
+	// Check for empty request
 	if r.Body == nil {
 		http.Error(w, "No request body provided", http.StatusBadRequest)
 		return
@@ -182,7 +182,7 @@ func (s *commService) HandleLiftUpdate(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *commService) HandleButtonUpdate(w http.ResponseWriter, r *http.Request) {
-	// Check for empty reqest
+	// Check for empty request
 	if r.Body == nil {
 		s.logger.Printf("[WARN] Received empty button status update.\n")
 		http.Error(w, "No request body provided", http.StatusBadRequest)

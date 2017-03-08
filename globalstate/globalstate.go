@@ -30,13 +30,13 @@ type Config struct {
 	RaftPort int
 
 	// If supplied the raft will attempt to connect to any cluster the supplied peer is connected to.
-	// If left blank the FSM instansiate a brand new raft and elect itself leader.
+	// If left blank the FSM instantiate a brand new raft and elect itself leader.
 	InitalPeer string
 
 	// OwnIP may be manually be set. If not supplied it will be inferred by the package if needed.
 	OwnIP string
 
-	// Number of floors on the lifts in the cluster. Only used for calculating timouts.
+	// Number of floors on the lifts in the cluster. Only used for calculating timeouts.
 	Floors int
 
 	// Called once whenever the node win or loose the raft-leadership.
@@ -57,7 +57,7 @@ type Config struct {
 
 	Logger *log.Logger
 
-	// Raft may produce a considerable amount of logging, espessialy whenever a node
+	// Raft may produce a considerable amount of logging, especially whenever a node
 	// fail to respond. Logging from the globalstate package itself is still active.
 	DisableRaftLogging bool
 }
@@ -113,7 +113,7 @@ func (f *FSM) UpdateLiftStatus(ls LiftStatusUpdate) error {
 	return nil
 }
 
-// UpdateButtonStatus update the globalt store  with the supplied button update.
+// UpdateButtonStatus update the global store  with the supplied button update.
 // If unable to reach the raft-leader it will return an error.
 func (f *FSM) UpdateButtonStatus(bs ButtonStatusUpdate) error {
 	if !f.initDone {

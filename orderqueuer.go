@@ -29,7 +29,7 @@ func orderQueuer() {
 
 	for {
 		select {
-		// Listen for incomming orders
+		// Listen for incoming orders
 		case dst := <-goToCh:
 			outsideQueue.Queue(dst)
 		// Listen for message that the last destination is reached.

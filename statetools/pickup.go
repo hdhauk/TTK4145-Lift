@@ -6,7 +6,8 @@ import (
 	"github.com/hdhauk/TTK4145-Lift/globalstate"
 )
 
-// ShouldStopAndPickup asd
+// ShouldStopAndPickup returns true if there are an opportunity to pick up someone in
+// the provided floor.
 func ShouldStopAndPickup(s globalstate.State, currentFloor int, currentDir string) bool {
 	// Extract applicable buttons
 	var buttons map[string]globalstate.Status

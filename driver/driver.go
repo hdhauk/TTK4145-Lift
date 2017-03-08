@@ -1,6 +1,6 @@
 /*
 Package driver provides control of both simulated and actual lifts.
-The package also provide functionality for handeling internal orderes, as well as taking external orders.
+The package also provide functionality for handling internal orders, as well as taking external orders.
 */
 package driver
 
@@ -8,7 +8,7 @@ import "fmt"
 
 // GoToFloor sends the lift carriage to the desired floor and stop there,
 // unless it is stopped before arriving at its destination.
-// A second call to the function will void the previous order if the carrige
+// A second call to the function will void the previous order if the carriage
 // haven't reached its destination.
 func GoToFloor(floor int, dir string) {
 	if floor > cfg.Floors-1 || floor < 0 {

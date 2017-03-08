@@ -52,9 +52,9 @@ func floorDetectHandler(floorDetectCh <-chan int, apFloor chan<- int) {
 	/*
 		== WORKER LOOP ==
 		Case 1: Incoming positive floor detection
-			Case 1a: 	The carrige have been driving since the last positive detection
+			Case 1a: 	The carriage have been driving since the last positive detection
 								--> Handle the detection as real thing
-			Case 1b: 	The carrige have NOT been driving since the last positive detection
+			Case 1b: 	The carriage have NOT been driving since the last positive detection
 								--> Do nothing. The detection is already been handled
 
 		Case 2: Incoming negative floor detection

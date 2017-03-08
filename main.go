@@ -23,7 +23,7 @@ var floors int
 // Pick ports randomly
 var raftPort = 1024 + rand.Intn(64510)
 
-// Both the global and local state are threadsafe and for convenience thus
+// Both the global and local state are thread safe and for convenience thus
 // available to the whole main package.
 var stateGlobal globalstate.FSM
 var stateLocal *statetools.LocalState

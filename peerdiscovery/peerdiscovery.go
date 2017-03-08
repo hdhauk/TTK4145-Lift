@@ -1,6 +1,6 @@
 /*
 Package peerdiscovery provides automatic detection of other peers in the same subnet.
-It does this by utlizing broadcastmessages over UDP. The package is in part based on
+It does this by utilizing broadcastmessages over UDP. The package is in part based on
 https://github.com/TTK4145/Network-go
 */
 package peerdiscovery

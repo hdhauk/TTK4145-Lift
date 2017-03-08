@@ -9,7 +9,7 @@ For a description of how the Raft algorithm works see:
 
 TL;DR:
 
-	Raft provide an algorithm for ensuring consensus in the cluser, which we in
+	Raft provide an algorithm for ensuring consensus in the cluster, which we in
 	this project use for keeping track of:
 	* Last registered floor for all lifts
 	* Whether an lift is at a standstill or moving somewhere

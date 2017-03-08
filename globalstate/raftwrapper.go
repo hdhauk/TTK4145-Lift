@@ -16,10 +16,10 @@ import (
 	"github.com/hashicorp/raft"
 )
 
-// raftwrapper is the datastructure that hold pretty much everything interesting in
+// raftwrapper is the data structure that hold pretty much everything interesting in
 // this package. The actual data is stored in the `state`-variable and read/writes
 // to it is protected by the mutex. The interface with the raft-library is DONE
-// through the raft-object, and itself provides replication hand heartbeating.
+// through the raft-object, and itself provides replication and heartbeating.
 // raftwrapper need to fulfill the raft.raftwrapper interface:
 //    * raftwrapper.Appy(*raftLog) interface{}
 //    * raftwrapper.Snapshot()(FSMSnapshot, error)
@@ -250,7 +250,7 @@ func (rw *raftwrapper) UpdateButtonStatus(bsu ButtonStatusUpdate) error {
 		LastChange: time.Now(),
 	}
 
-	// Marshal payload to bytes. No need for errorcheck, as it it just recently
+	// Marshal payload to bytes. No need for error check, as it it just recently
 	// been unmarhaled by the same library.
 	v, err := json.Marshal(status)
 	if err != nil {
@@ -280,7 +280,7 @@ func (rw *raftwrapper) UpdateButtonStatus(bsu ButtonStatusUpdate) error {
 
 // Internal fsm-function
 // 	These are functions called by the raft apply command in order to recreate
-//	the store based on the raft-log. Functins here are called by the
+//	the store based on the raft-log. Functions here are called by the
 //	Apply()-command, and should not be called directly.
 // =============================================================================
 
@@ -321,7 +321,7 @@ func (rw *raftwrapper) applyNodeUpdate(nodeID string, e []byte) interface{} {
 		return fmt.Errorf("unable to unmarshal liftstats")
 	}
 
-	// Update the actual datastore entry
+	// Update the actual data store entry
 	rw.mu.Lock()
 	defer rw.mu.Unlock()
 	rw.state.Nodes[nodeID] = lift
@@ -337,7 +337,7 @@ func (rw *raftwrapper) applyBtnUpUpdate(floor string, b []byte) interface{} {
 		return fmt.Errorf("unable to unmarshal ButtonUpStatusUpdate: %s", err.Error())
 	}
 
-	// Update the actual datastore entry
+	// Update the actual data store entry
 	rw.mu.Lock()
 	defer rw.mu.Unlock()
 	// Discard any transitions from "done" --> "assigned"
@@ -357,7 +357,7 @@ func (rw *raftwrapper) applyBtnDownUpdate(floor string, b []byte) interface{} {
 		return fmt.Errorf("unable to unmarshal ButtonDownStatusUpdate: %s", err.Error())
 	}
 
-	// Update the actual datastore entry
+	// Update the actual data store entry
 	rw.mu.Lock()
 	defer rw.mu.Unlock()
 

@@ -15,13 +15,13 @@ const (
 	done = "done"
 )
 
-// LocalState is a threadsafe data structure almost identical to the global state.
+// LocalState is a thread safe data structure almost identical to the global state.
 type LocalState struct {
 	state globalstate.State
 	mu    sync.Mutex
 }
 
-// NewLocalState instansiate a new local state ready for use.
+// NewLocalState instantiate a new local state ready for use.
 func NewLocalState() *LocalState {
 	l := LocalState{}
 	l.state.HallUpButtons = make(map[string]globalstate.Status)
@@ -79,7 +79,7 @@ func (ls *LocalState) GetNextOrder() (floor int, dir string) {
 }
 
 // GetShareworthyUpdates dumps all orders in the local state that aren't currently marked
-// as done. For conencience they are retuned as an array of button status updates.
+// as done. For convenience they are returned as an array of button status updates.
 func (ls *LocalState) GetShareworthyUpdates() []globalstate.ButtonStatusUpdate {
 	ls.mu.Lock()
 	defer ls.mu.Unlock()

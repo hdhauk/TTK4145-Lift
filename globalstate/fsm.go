@@ -14,7 +14,7 @@ import (
 )
 
 // FSM hold all logic and essentially IS the globalstate handle. You may
-// instansiate several FSM as long as they have different ports.
+// instantiate several FSM as long as they have different ports.
 type FSM struct {
 	wrapper  *raftwrapper
 	comm     *commService
@@ -48,7 +48,7 @@ func (f *FSM) Init(config Config) error {
 	tmpDir, err1 := ioutil.TempDir("", "raft-fsm-store")
 	if err1 != nil {
 		f.wrapper.logger.Printf("[ERROR] Unable to create temporary folder for raft: %v\n", err1.Error())
-		return fmt.Errorf("failed to instansiate temp folder: %v", err1)
+		return fmt.Errorf("failed to instantiate temp folder: %v", err1)
 	}
 	defer os.RemoveAll(tmpDir)
 	f.wrapper.RaftDir = tmpDir

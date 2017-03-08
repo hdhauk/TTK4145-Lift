@@ -10,7 +10,7 @@ var mu sync.Mutex
 var localIP string
 
 // GetLocalIP return the IP-address of the local client. It does this by
-// dailing the Google DNS service, hence it will fail if it is unable to reach
+// dialing the Google DNS service, hence it will fail if it is unable to reach
 // the internet.
 func GetLocalIP() (string, error) {
 	mu.Lock()
