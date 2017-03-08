@@ -21,10 +21,10 @@ For a overview over the Raft consensus algorithm see the excellent visualization
 ## Module documentation
 | Module name  | Description |
 | ------------- | ------------- |
-|`driver`[![GoDoc](https://godoc.org/github.com/hdhauk/TTK4145-Lift/driver?status.svg)](https://godoc.org/github.com/hdhauk/TTK4145-Lift/driver)|Package driver provides control of both simulated and actual lifts. The package also provide functionality for handeling internal orderes, as well as taking external orders.|
-|`peerdiscovery`[![GoDoc](https://godoc.org/github.com/hdhauk/TTK4145-Lift/peerdiscovery?status.svg)](https://godoc.org/github.com/hdhauk/TTK4145-Lift/peerdiscovery)|Package peerdiscovery provides automatic detection of other peers in the same subnet. It does this by utlizing broadcastmessages over UDP.|
-|`globalstate`[![GoDoc](https://godoc.org/github.com/hdhauk/TTK4145-Lift/globalstate?status.svg)](https://godoc.org/github.com/hdhauk/TTK4145-Lift/globalstate)|Package globalstate is wrapper package for Hashicorps' implementation of the Raft consensus protocol. See https://github.com/hashicorp/raft.|
-|`statetools`[![GoDoc](https://godoc.org/github.com/hdhauk/TTK4145-Lift/statetools?status.svg)](https://godoc.org/github.com/hdhauk/TTK4145-Lift/statetools)|Package statetools implements costfunctions, and tools necessary to replicate some of the globalstate's functionality offline.|
+|`driver` [![GoDoc](https://godoc.org/github.com/hdhauk/TTK4145-Lift/driver?status.svg)](https://godoc.org/github.com/hdhauk/TTK4145-Lift/driver)|Package driver provides control of both simulated and actual lifts. The package also provide functionality for handeling internal orderes, as well as taking external orders.|
+|`peerdiscovery` [![GoDoc](https://godoc.org/github.com/hdhauk/TTK4145-Lift/peerdiscovery?status.svg)](https://godoc.org/github.com/hdhauk/TTK4145-Lift/peerdiscovery)|Package peerdiscovery provides automatic detection of other peers in the same subnet. It does this by utlizing broadcastmessages over UDP.|
+|`globalstate` [![GoDoc](https://godoc.org/github.com/hdhauk/TTK4145-Lift/globalstate?status.svg)](https://godoc.org/github.com/hdhauk/TTK4145-Lift/globalstate)|Package globalstate is wrapper package for Hashicorps' implementation of the Raft consensus protocol. See https://github.com/hashicorp/raft.|
+|`statetools` [![GoDoc](https://godoc.org/github.com/hdhauk/TTK4145-Lift/statetools?status.svg)](https://godoc.org/github.com/hdhauk/TTK4145-Lift/statetools)|Package statetools implements costfunctions, and tools necessary to replicate some of the globalstate's functionality offline.|
 
 ## Installation
 
