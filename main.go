@@ -33,7 +33,7 @@ var mainlogger = log.New(os.Stderr, "[main] ", log.Ltime|log.Lshortfile)
 
 // Set up internal communication in package main.
 // All communication with other packages are done through callbacks.
-var goToCh = make(chan driver.Btn, 9)
+var goToCh = make(chan driver.Btn)
 var orderDoneCh = make(chan interface{})
 var haveConsensusBtnSyncCh = make(chan bool)
 var haveConsensusAssignerCh = make(chan bool)
@@ -115,9 +115,9 @@ func main() {
 	stateLocal = statetools.NewLocalState()
 
 	// Start workers for coordination
-	go syncBtnLEDs(stateGlobal) // Only active when consensus is achieved.
-	go orderQueuer()            // Always active.
-	go noConsensusAssigner()    // Only active when consensus is missing.
+	go syncBtnLEDs()         // Only active when consensus is achieved.
+	go orderQueuer()         // Always active.
+	go noConsensusAssigner() // Only active when consensus is missing.
 
 	// Capture Ctrl+C in order to stop the lift if it is moving.
 	c := make(chan os.Signal, 1)

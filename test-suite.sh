@@ -19,7 +19,7 @@ do
   Spawn 4x terminals for the simulators                    (7)
   Quit                                                     (Q)
 --------------------------------------------------------------
-Choose and option:
+Choose an option:
 EOF
     read -n1 -s
     case "$REPLY" in

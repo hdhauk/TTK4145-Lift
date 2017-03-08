@@ -75,6 +75,7 @@ func (ls *LocalState) GetNextOrder() (floor int, dir string) {
 			dir = down
 		}
 	}
+	fmt.Printf("GetNextOrder returned: Floor = %d, Dir= %s\n", floor, dir)
 	return
 }
 
@@ -109,4 +110,25 @@ func (ls *LocalState) GetShareworthyUpdates() []globalstate.ButtonStatusUpdate {
 		}
 	}
 	return share
+}
+
+// CloneGlobalstate clone the entire provided globalstate onto the local state such
+// that the local state is now an exact copy of the global one.
+func (ls *LocalState) CloneGlobalstate(gs globalstate.State) {
+	ls.mu.Lock()
+	defer ls.mu.Unlock()
+	ls.state = gs
+
+	// Mark all assigned orders as unassigned
+	for floor, s := range ls.state.HallDownButtons {
+		if s.LastStatus == globalstate.BtnStateAssigned {
+			ls.state.HallDownButtons[floor] = globalstate.Status{LastStatus: globalstate.BtnStateUnassigned, LastChange: time.Now()}
+		}
+	}
+	for floor, s := range ls.state.HallUpButtons {
+		if s.LastStatus == globalstate.BtnStateAssigned {
+			ls.state.HallUpButtons[floor] = globalstate.Status{LastStatus: globalstate.BtnStateUnassigned, LastChange: time.Now()}
+		}
+	}
+	fmt.Println(ls.state.HallDownButtons)
 }

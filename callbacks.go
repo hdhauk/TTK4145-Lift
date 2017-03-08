@@ -49,6 +49,14 @@ func onAquiredConsensus() {
 
 func onLostConsensus() {
 	mainlogger.Println("[WARN] Lost consensus. Falling back to local non-consensus mode.")
+	// Sync global state buttons to local state
+	if gs, err := stateGlobal.GetState(); err != nil {
+		mainlogger.Printf("[ERROR] Unable to replicate from global to local state: %s\n", err.Error())
+	} else {
+		stateLocal.CloneGlobalstate(gs)
+		mainlogger.Println("[INFO] Replicating global state onto local state.")
+	}
+
 	haveConsensusBtnSyncCh <- false
 	haveConsensusAssignerCh <- false
 }
@@ -66,7 +74,7 @@ func onBtnPress(b driver.Btn) {
 		if err != nil {
 			mainlogger.Printf("[INFO] Unable to send button update to network. Storing locally.\n")
 			if err := stateLocal.UpdateButtonStatus(bsu); err != nil {
-				mainlogger.Printf("[ERROR] Unable to handle button press: %v", err.Error())
+				mainlogger.Printf("[ERROR] Failed to save local state: %v", err.Error())
 				return
 			}
 		}
@@ -76,13 +84,6 @@ func onBtnPress(b driver.Btn) {
 }
 
 func onNewStatus(f int, dir string, dstFloor int, dstDir string) {
-	// Check if there are anyone to pick up.
-	state, _ := stateGlobal.GetState()
-	if statetools.ShouldStopAndPickup(state, f, dir) {
-		driver.StopForPickup(f, dir)
-		mainlogger.Printf("[INFO] Pickup was available in Floor=%d Dir=%s. Stopping!\n", f, dir)
-	}
-
 	// Send status update
 	if dstFloor < 0 {
 		dstFloor = dstFloor * -1
@@ -95,6 +96,14 @@ func onNewStatus(f int, dir string, dstFloor int, dstDir string) {
 	}
 	if err := stateGlobal.UpdateLiftStatus(lsu); err != nil {
 		mainlogger.Println("[WARN] Failed to send liftupdate.")
+		return
+	}
+
+	// Check if there are anyone to pick up.
+	state, _ := stateGlobal.GetState()
+	if statetools.ShouldStopAndPickup(state, f, dir) {
+		driver.StopForPickup(f, dir)
+		mainlogger.Printf("[INFO] Pickup was available in Floor=%d Dir=%s. Stopping!\n", f, dir)
 	}
 
 }
@@ -106,10 +115,12 @@ func onDstReached(b driver.Btn, pickup bool) {
 		Status: globalstate.BtnStateDone,
 	}
 	if err := stateGlobal.UpdateButtonStatus(bsu); err != nil {
+		mainlogger.Printf("[WARN] Unable to send order complete: %s\n", err.Error())
 		if err := stateLocal.UpdateButtonStatus(bsu); err != nil {
 			mainlogger.Printf("[ERROR] Unable to handle button press: %v", err.Error())
 			return
 		}
+		mainlogger.Println("[INFO] Order complete set in local state.")
 	}
 	driver.BtnLEDClear(b)
 	if !pickup {

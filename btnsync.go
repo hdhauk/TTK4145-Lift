@@ -5,10 +5,9 @@ import (
 	"time"
 
 	"github.com/hdhauk/TTK4145-Lift/driver"
-	"github.com/hdhauk/TTK4145-Lift/globalstate"
 )
 
-func syncBtnLEDs(globalstate globalstate.FSM) {
+func syncBtnLEDs() {
 	consensus := false
 
 	for {
@@ -25,7 +24,7 @@ func syncBtnLEDs(globalstate globalstate.FSM) {
 		// Only do sync every half second.
 		time.Sleep(500 * time.Millisecond)
 
-		state, err := globalstate.GetState()
+		state, err := stateGlobal.GetState()
 		if err != nil {
 			continue
 		}
@@ -38,6 +37,7 @@ func syncBtnLEDs(globalstate globalstate.FSM) {
 			} else {
 				driver.BtnLEDSet(driver.Btn{Floor: f, Type: driver.HallUp})
 			}
+
 		}
 		for floorStr, status := range state.HallDownButtons {
 			f, _ := strconv.Atoi(floorStr)
