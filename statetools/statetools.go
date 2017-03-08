@@ -75,7 +75,6 @@ func (ls *LocalState) GetNextOrder() (floor int, dir string) {
 			dir = down
 		}
 	}
-	fmt.Printf("GetNextOrder returned: Floor = %d, Dir= %s\n", floor, dir)
 	return
 }
 
@@ -130,5 +129,4 @@ func (ls *LocalState) CloneGlobalstate(gs globalstate.State) {
 			ls.state.HallUpButtons[floor] = globalstate.Status{LastStatus: globalstate.BtnStateUnassigned, LastChange: time.Now()}
 		}
 	}
-	fmt.Println(ls.state.HallDownButtons)
 }
