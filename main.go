@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"log"
 	"math/rand"
@@ -9,6 +10,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/dimiro1/banner"
 	"github.com/hdhauk/TTK4145-Lift/driver"
 	"github.com/hdhauk/TTK4145-Lift/globalstate"
 	"github.com/hdhauk/TTK4145-Lift/peerdiscovery"
@@ -39,6 +41,7 @@ var haveConsensusBtnSyncCh = make(chan bool)
 var haveConsensusAssignerCh = make(chan bool)
 
 func main() {
+	banner.Init(os.Stdout, true, true, bytes.NewBufferString(bannerTxt))
 	// Parse command line argument flags
 	flag.StringVar(&nick, "nick", strconv.Itoa(os.Getpid()), "Nickname of this peer. Default is the process id (PID)")
 	flag.StringVar(&simPort, "sim", "", "Listening port of the simulator")
