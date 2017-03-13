@@ -26,8 +26,6 @@ func setMotorDirHW(dir string) {
 }
 
 func setBtnLEDHW(btn Btn, active bool) {
-	// TODO: Check button integrity
-
 	if active {
 		ioSetBit(lampChannelMatrix[btn.Floor][int(btn.Type)])
 	} else {
@@ -64,7 +62,6 @@ func setDoorLEDHW(isOpen bool) {
 }
 
 func readOrderBtnHW(btn Btn) bool {
-	// TODO: Check button integrity
 	if ioReadBit(buttonChannelMatrix[btn.Floor][int(btn.Type)]) {
 		return true
 	}

@@ -303,11 +303,6 @@ func (rw *raftwrapper) applyUpdateFloor(floor interface{}) interface{} {
 	rw.mu.Lock()
 	defer rw.mu.Unlock()
 	floorInt, _ := floor.(uint)
-	// TODO: Implement test for the floorInt
-	// if !ok {
-	// 	f.logger.Printf("[ERROR] Unable to apply floorUpdate. Bad floor: %v\n", floor)
-	// 	return nil
-	// }
 	rw.state.Floors = floorInt
 	return nil
 }

@@ -146,7 +146,7 @@ func (s *commService) HandleCmd(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Unmarshal json object (identical to btn-struct in LeaderMonitor
-	// but redeclared here for your convenience ;)
+	// but redeclared here for your convenience.
 	var btn = struct {
 		Floor int
 		Dir   string

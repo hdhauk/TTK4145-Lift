@@ -32,7 +32,6 @@ func BtnLEDClear(b Btn) {
 		cfg.Logger.Printf("%s[ERROR] Invalid button: %s%s", yellow, err.Error(), white)
 		return
 	}
-	// TODO: Check for race conditions
 	driverHandle.setBtnLED(b, false)
 }
 
