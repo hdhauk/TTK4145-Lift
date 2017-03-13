@@ -1,6 +1,6 @@
 package main
 
-var bannerTxt = `
+const bannerTxt = `
 {{ .AnsiBackground.BrightWhite }}                                                                                           
    {{ .AnsiColor.Black }}████████╗████████╗██╗  ██╗██╗  ██╗ ██╗██╗  ██╗███████╗      ██╗     ██╗███████╗████████╗
    ╚══██╔══╝╚══██╔══╝██║ ██╔╝██║  ██║███║██║  ██║██╔════╝      ██║     ██║██╔════╝╚══██╔══╝
